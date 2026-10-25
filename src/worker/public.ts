@@ -89,12 +89,15 @@ export async function castVote(request: Request, env: Env, eventId: string): Pro
   const event = await loadEvent(env, eventId);
   if (event.status !== "open") throw new HttpError(409, "Voting isn't open");
   const body = await readJson(request);
+  if (typeof body.categoryId !== "string" || typeof body.entryId !== "string") {
+    throw new HttpError(400, "That entry isn't in this category");
+  }
 
   const entry = await env.DB.prepare(
     `SELECT e.id FROM entries e JOIN categories c ON c.id = e.category_id
       WHERE e.id = ? AND e.category_id = ? AND c.event_id = ?`,
   )
-    .bind(body.entryId ?? "", body.categoryId ?? "", eventId)
+    .bind(body.entryId, body.categoryId, eventId)
     .first();
   if (!entry) throw new HttpError(400, "That entry isn't in this category");
 

@@ -19,6 +19,7 @@ import {
 import { error, HttpError, json } from "./http";
 import { getPhoto } from "./photos";
 import { castVote, lookupCode, publicEvent } from "./public";
+import { canonicalRedirect, isCrossSite, withSecurityHeaders } from "./security";
 
 type Handler = (request: Request, env: Env, ...params: string[]) => Promise<Response>;
 
@@ -56,6 +57,15 @@ const ROUTES: [string, string, Handler][] = [
   ["GET", "/api/photos/*", (r, env, key) => getPhoto(env, key!, r)],
 ];
 
+/** decodeURIComponent, but null for malformed escapes like "%E0%A4%A" rather than throwing. */
+function safeDecode(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
 /** Matches a path against a pattern, returning the captured segments or null. */
 export function matchPath(pattern: string, path: string): string[] | null {
   const want = pattern.split("/");
@@ -71,7 +81,9 @@ export function matchPath(pattern: string, path: string): string[] | null {
     if (got[i] === undefined) return null;
     if (want[i]!.startsWith(":")) {
       if (!got[i]) return null;
-      params.push(decodeURIComponent(got[i]!));
+      const param = safeDecode(got[i]!);
+      if (param === null) return null;
+      params.push(param);
     } else if (want[i] !== got[i]) {
       return null;
     }
@@ -92,22 +104,27 @@ export async function route(request: Request, env: Env): Promise<Response> {
 }
 
 // Every request reaches the Worker first (run_worker_first in wrangler.jsonc), so
-// www can redirect to the one origin that magic links and Turnstile are set up
-// for. Paths outside /api/ are then served from public/ by the assets binding.
+// www and plain http can redirect to the one origin that magic links and
+// Turnstile are set up for, and every response gets the security headers. Paths
+// outside /api/ are then served from public/ by the assets binding.
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (url.hostname.startsWith("www.")) {
-      url.hostname = url.hostname.slice(4);
-      return Response.redirect(url.toString(), 301);
-    }
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
-    try {
-      return await route(request, env);
-    } catch (err) {
-      if (err instanceof HttpError) return error(err.status, err.message);
-      console.error(err);
-      return error(500, "Something went wrong");
-    }
+    const isApi = url.pathname.startsWith("/api/");
+    return withSecurityHeaders(await respond(request, env, url, isApi), env, isApi);
   },
 } satisfies ExportedHandler<Env>;
+
+async function respond(request: Request, env: Env, url: URL, isApi: boolean): Promise<Response> {
+  const canonical = canonicalRedirect(url, env);
+  if (canonical) return Response.redirect(canonical, 301);
+  if (!isApi) return env.ASSETS.fetch(request);
+  if (isCrossSite(request)) return error(403, "Cross-site request refused");
+  try {
+    return await route(request, env);
+  } catch (err) {
+    if (err instanceof HttpError) return error(err.status, err.message);
+    console.error(err);
+    return error(500, "Something went wrong");
+  }
+}

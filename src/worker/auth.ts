@@ -17,22 +17,68 @@ export async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Only same-site paths, so a crafted link can't bounce a login off-site. */
+/**
+ * Only same-site paths, so a crafted link can't bounce a login off-site.
+ * Browsers read "/\evil.example" as "//evil.example" and drop tabs and
+ * newlines, so backslashes and control characters are refused outright.
+ */
 export function safeNext(next: string | null): string {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+  if (!next || !next.startsWith("/") || next.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(next)) return "/";
+  return next;
 }
 
-/** Emails a single-use login link that lands on `next` once signed in. */
+// Login emails cost money and reputation: Resend's free plan sends 100 a day,
+// and a link is an email to an address someone typed. These caps stop one
+// address being flooded and one client draining the quota.
+export const MAX_LINKS_PER_EMAIL_PER_HOUR = 5;
+export const MAX_LINKS_PER_IP_PER_HOUR = 20;
+const HOUR_MS = 60 * 60 * 1000;
+const PURGE_AFTER_MS = 24 * HOUR_MS;
+
+/** The requesting client's IP, as Cloudflare reports it; null outside Cloudflare. */
+export function clientIp(request: Request): string | null {
+  return request.headers.get("cf-connecting-ip");
+}
+
+/** Throws 429 if `email` or `ip` has had too many login links in the last hour. */
+async function checkLinkQuota(env: Env, email: string, ipHash: string | null): Promise<void> {
+  const since = new Date(Date.now() - HOUR_MS).toISOString();
+  const row = await env.DB.prepare(
+    `SELECT (SELECT COUNT(*) FROM login_tokens WHERE email = ? AND created_at > ?) AS byEmail,
+            (SELECT COUNT(*) FROM login_tokens WHERE ip_hash = ? AND created_at > ?) AS byIp`,
+  )
+    .bind(email, since, ipHash, since)
+    .first<{ byEmail: number; byIp: number }>();
+  if (row!.byEmail >= MAX_LINKS_PER_EMAIL_PER_HOUR || row!.byIp >= MAX_LINKS_PER_IP_PER_HOUR) {
+    throw new HttpError(429, "Too many login links have been sent. Please wait a while and try again.");
+  }
+}
+
+/** Drops spent login tokens and expired sessions, so neither table grows forever. */
+async function purgeExpired(env: Env): Promise<void> {
+  const now = new Date();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM login_tokens WHERE expires_at < ?").bind(new Date(now.getTime() - PURGE_AFTER_MS).toISOString()),
+    env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now.toISOString()),
+  ]);
+}
+
+/** Emails a single-use login link that lands on `next` once signed in; 429 past the rate limits. */
 export async function sendLoginLink(
   env: Env,
+  request: Request,
   email: string,
   next: string,
   subject = "Your Cookoff Champs login link",
   intro = "Here's your link to log in to Cookoff Champs.",
 ): Promise<void> {
+  const ip = clientIp(request);
+  const ipHash = ip ? await sha256(ip) : null;
+  await purgeExpired(env);
+  await checkLinkQuota(env, email, ipHash);
   const token = newId() + newId();
-  await env.DB.prepare("INSERT INTO login_tokens (token_hash, email, expires_at) VALUES (?, ?, ?)")
-    .bind(await sha256(token), email, new Date(Date.now() + LINK_TTL_MS).toISOString())
+  await env.DB.prepare("INSERT INTO login_tokens (token_hash, email, expires_at, created_at, ip_hash) VALUES (?, ?, ?, ?, ?)")
+    .bind(await sha256(token), email, new Date(Date.now() + LINK_TTL_MS).toISOString(), new Date().toISOString(), ipHash)
     .run();
   const link = `${env.APP_ORIGIN}/api/auth/verify?token=${token}&next=${encodeURIComponent(safeNext(next))}`;
   await sendEmail(env, {
@@ -42,11 +88,14 @@ export async function sendLoginLink(
   });
 }
 
-/** POST /api/auth/login {email, next?}. Always 200, so it can't be used to probe for accounts. */
+/**
+ * POST /api/auth/login {email, next?}. 200 for any valid address, so it can't be
+ * used to probe for accounts (anyone can log in; there are no accounts to find).
+ */
 export async function requestLogin(request: Request, env: Env): Promise<Response> {
   const body = await readJson(request);
   const email = requireEmail(body.email);
-  await sendLoginLink(env, email, safeNext(typeof body.next === "string" ? body.next : null));
+  await sendLoginLink(env, request, email, safeNext(typeof body.next === "string" ? body.next : null));
   return json({ ok: true });
 }
 
