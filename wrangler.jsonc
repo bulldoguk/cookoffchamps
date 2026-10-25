@@ -14,19 +14,21 @@
     {
       "binding": "DB",
       "database_name": "cookoffchamps",
-      // Placeholder until the real database is created (SW-14).
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "74ac3418-a37e-4041-a327-77dbbce65fd9",
       "migrations_dir": "migrations"
     }
   ],
+  // Cloudflare Email Sending, for magic links. Needs cookoffchamps.com on Cloudflare.
+  "send_email": [{ "name": "EMAIL" }],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "cookoffchamps-photos" }],
+  // Production values. Local dev and the e2e tests override them from .dev.vars
+  // (copy .dev.vars.example), and the unit tests set their own in vitest.config.ts.
   "vars": {
-    // "log" prints magic links instead of emailing them. Production sets "resend".
-    "EMAIL_MODE": "log",
-    "APP_ORIGIN": "http://localhost:8787",
-    "EMAIL_FROM": "Cookoff Champs <hello@cookoffchamps.com>",
-    // Cloudflare's published always-pass Turnstile test site key. Production
-    // overrides it; TURNSTILE_SECRET comes from .dev.vars or `wrangler secret`.
-    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA"
+    "EMAIL_MODE": "cloudflare",
+    "APP_ORIGIN": "https://cookoffchamps.com",
+    "EMAIL_FROM": "hello@cookoffchamps.com",
+    // Public by design: the site key is embedded in every page. The secret is set
+    // with `wrangler secret put TURNSTILE_SECRET`.
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFktbyWGH6J6pHxl"
   }
 }

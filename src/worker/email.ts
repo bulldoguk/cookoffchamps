@@ -7,8 +7,9 @@ export interface Email {
   text: string;
 }
 
-// Cloudflare cannot send email itself, so production goes through Resend
-// (spec decision 3). In "log" mode the message lands in the dev outbox.
+// Production sends through Cloudflare Email Sending (the send_email binding),
+// which replaced the planned Resend account on 2026-10-24: one less service.
+// In "log" mode the message lands in the dev outbox instead.
 export async function sendEmail(env: Env, email: Email): Promise<void> {
   if (env.EMAIL_MODE === "log") {
     await env.DB.prepare(
@@ -19,20 +20,17 @@ export async function sendEmail(env: Env, email: Email): Promise<void> {
     return;
   }
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      from: env.EMAIL_FROM,
-      to: [email.to],
+  try {
+    await env.EMAIL!.send({
+      from: { name: "Cookoff Champs", email: env.EMAIL_FROM },
+      to: email.to,
       subject: email.subject,
       text: email.text,
-    }),
-  });
-  if (!res.ok) throw new HttpError(502, "Could not send email");
+    });
+  } catch (err) {
+    console.error("email send failed", err);
+    throw new HttpError(502, "Could not send email");
+  }
 }
 
 /**

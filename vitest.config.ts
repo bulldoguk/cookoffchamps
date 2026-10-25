@@ -12,7 +12,14 @@ export default defineConfig(async () => {
             cloudflareTest({
               wrangler: { configPath: "./wrangler.jsonc" },
               miniflare: {
-                bindings: { TEST_MIGRATIONS: migrations, TURNSTILE_SECRET: "test-secret" },
+                // Dev-mode values, so tests never depend on the production vars.
+                bindings: {
+                  TEST_MIGRATIONS: migrations,
+                  EMAIL_MODE: "log",
+                  APP_ORIGIN: "http://localhost:8787",
+                  TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+                  TURNSTILE_SECRET: "test-secret",
+                },
               },
             }),
           ],

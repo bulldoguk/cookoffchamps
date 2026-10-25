@@ -105,26 +105,24 @@ describe("safeNext", () => {
 });
 
 describe("email delivery", () => {
-  it("sends through Resend outside log mode", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+  it("sends through Cloudflare Email Sending outside log mode", async () => {
+    const send = vi.fn(async () => ({ messageId: "m1" }));
     const { sendEmail } = await import("../../src/worker/email");
-    await sendEmail({ ...env, EMAIL_MODE: "resend", RESEND_API_KEY: "re_test" }, { to: "a@b.co", subject: "Hi", text: "Body" });
-    const [url, init] = fetchSpy.mock.calls[0]!;
-    expect(url).toBe("https://api.resend.com/emails");
-    expect((init!.headers as Record<string, string>).authorization).toBe("Bearer re_test");
-    expect(JSON.parse(init!.body as string)).toEqual({
-      from: env.EMAIL_FROM,
-      to: ["a@b.co"],
+    await sendEmail({ ...env, EMAIL_MODE: "cloudflare", EMAIL: { send } as unknown as SendEmail }, { to: "a@b.co", subject: "Hi", text: "Body" });
+    expect(send).toHaveBeenCalledWith({
+      from: { name: "Cookoff Champs", email: "hello@cookoffchamps.com" },
+      to: "a@b.co",
       subject: "Hi",
       text: "Body",
     });
   });
 
-  it("reports a Resend failure as 502", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("no", { status: 422 }));
+  it("reports a failed send as 502", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const send = vi.fn(async () => { throw new Error("domain not verified"); });
     const { sendEmail } = await import("../../src/worker/email");
     await expect(
-      sendEmail({ ...env, EMAIL_MODE: "resend" }, { to: "a@b.co", subject: "Hi", text: "Body" }),
+      sendEmail({ ...env, EMAIL_MODE: "cloudflare", EMAIL: { send } as unknown as SendEmail }, { to: "a@b.co", subject: "Hi", text: "Body" }),
     ).rejects.toMatchObject({ status: 502 });
   });
 
@@ -137,7 +135,7 @@ describe("email delivery", () => {
     expect(mail[0]).toMatchObject({ to: "box@example.com", subject: "Your Cookoff Champs login link" });
 
     expect(await readOutbox({ ...env, APP_ORIGIN: "https://cookoffchamps.com" })).toBeNull();
-    expect(await readOutbox({ ...env, EMAIL_MODE: "resend" })).toBeNull();
+    expect(await readOutbox({ ...env, EMAIL_MODE: "cloudflare" })).toBeNull();
   });
 
   it("hides the dev outbox route when it's off", async () => {

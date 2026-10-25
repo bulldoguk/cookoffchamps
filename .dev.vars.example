@@ -1,3 +1,7 @@
-# Copy to .dev.vars for `npm run dev`. These are Cloudflare's published
-# always-pass Turnstile test secret, not a real credential.
+# Copy to .dev.vars for `npm run dev` and the e2e tests. Everything here is
+# safe to commit: the Turnstile pair is Cloudflare's published always-pass test
+# key and secret, not a credential.
+EMAIL_MODE=log
+APP_ORIGIN=http://localhost:8787
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
 TURNSTILE_SECRET=1x0000000000000000000000000000000AA

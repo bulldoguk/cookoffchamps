@@ -13,7 +13,7 @@ It runs entirely on Cloudflare's free tier:
 - **R2:** photos
 - **Turnstile:** keeps scripted votes out
 
-Login emails go through Resend.
+Login emails go through Cloudflare Email Sending.
 
 ## Development
 
