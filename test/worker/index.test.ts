@@ -26,6 +26,12 @@ describe("worker routing", () => {
     expect(await res.text()).toContain("Cookoff Champs");
   });
 
+  it("redirects www to the bare domain, keeping the path and query", async () => {
+    const res = await worker.fetch(new Request("https://www.cookoffchamps.com/e/abc?x=1"), env);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("https://cookoffchamps.com/e/abc?x=1");
+  });
+
   it("turns unexpected errors into a plain 500", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const broken = { ...env, DB: { prepare: () => { throw new Error("boom"); } } as unknown as D1Database };

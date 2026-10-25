@@ -3,13 +3,22 @@
   "name": "cookoffchamps",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-10-01",
-  // The Worker answers /api/*; everything else is a static asset from public/.
+  // The Worker answers /api/* and redirects www; everything else is a static
+  // asset from public/.
   "assets": {
     "directory": "public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": true
   },
+  // One public origin. workers.dev is off: magic links point at APP_ORIGIN, and
+  // the Turnstile widget only allows cookoffchamps.com.
+  "routes": [
+    { "pattern": "cookoffchamps.com", "custom_domain": true },
+    { "pattern": "www.cookoffchamps.com", "custom_domain": true }
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
   "d1_databases": [
     {
       "binding": "DB",

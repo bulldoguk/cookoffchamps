@@ -91,11 +91,17 @@ export async function route(request: Request, env: Env): Promise<Response> {
   return pathMatched ? error(405, "Method not allowed") : error(404, "Not found");
 }
 
-// Only /api/* reaches the Worker (run_worker_first in wrangler.jsonc); every
-// other path is served from public/ by the assets binding.
+// Every request reaches the Worker first (run_worker_first in wrangler.jsonc), so
+// www can redirect to the one origin that magic links and Turnstile are set up
+// for. Paths outside /api/ are then served from public/ by the assets binding.
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (!new URL(request.url).pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+    const url = new URL(request.url);
+    if (url.hostname.startsWith("www.")) {
+      url.hostname = url.hostname.slice(4);
+      return Response.redirect(url.toString(), 301);
+    }
+    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     try {
       return await route(request, env);
     } catch (err) {
