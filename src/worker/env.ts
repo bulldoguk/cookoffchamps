@@ -2,14 +2,14 @@ export interface Env {
   DB: D1Database;
   PHOTOS: R2Bucket;
   ASSETS: Fetcher;
-  /** "log" keeps emails in the dev outbox; "cloudflare" sends through EMAIL. */
-  EMAIL_MODE: "log" | "cloudflare";
+  /** "log" keeps emails in the dev outbox; "resend" sends through Resend. */
+  EMAIL_MODE: "log" | "resend";
   /** Where links in emails point, e.g. https://cookoffchamps.com */
   APP_ORIGIN: string;
-  /** The sending address, on a domain with Cloudflare Email Sending enabled. */
+  /** The sending address, on a domain verified in Resend. */
   EMAIL_FROM: string;
-  /** Cloudflare Email Sending binding; absent in local dev. */
-  EMAIL?: SendEmail;
+  /** Set with `wrangler secret put RESEND_API_KEY`; absent in local dev. */
+  RESEND_API_KEY?: string;
   TURNSTILE_SITE_KEY: string;
   TURNSTILE_SECRET: string;
 }

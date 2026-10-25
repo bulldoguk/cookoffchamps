@@ -13,7 +13,7 @@ It runs entirely on Cloudflare's free tier:
 - **R2:** photos
 - **Turnstile:** keeps scripted votes out
 
-Login emails go through Cloudflare Email Sending.
+Login emails go through [Resend](https://resend.com)'s free plan. (Cloudflare Email Sending needs the paid Workers plan.)
 
 ## Development
 
@@ -23,7 +23,7 @@ npm run db:migrate:local
 npm run dev        # http://localhost:8787
 ```
 
-In development, magic-link emails are printed to the console instead of sent (`EMAIL_MODE=log`).
+In development, magic-link emails are kept in a dev outbox instead of sent (`EMAIL_MODE=log`): open http://localhost:8787/api/dev/outbox to see them.
 
 ## Tests
 

@@ -18,17 +18,15 @@
       "migrations_dir": "migrations"
     }
   ],
-  // Cloudflare Email Sending, for magic links. Needs cookoffchamps.com on Cloudflare.
-  "send_email": [{ "name": "EMAIL" }],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "cookoffchamps-photos" }],
   // Production values. Local dev and the e2e tests override them from .dev.vars
   // (copy .dev.vars.example), and the unit tests set their own in vitest.config.ts.
   "vars": {
-    "EMAIL_MODE": "cloudflare",
+    "EMAIL_MODE": "resend",
     "APP_ORIGIN": "https://cookoffchamps.com",
     "EMAIL_FROM": "hello@cookoffchamps.com",
-    // Public by design: the site key is embedded in every page. The secret is set
-    // with `wrangler secret put TURNSTILE_SECRET`.
+    // Public by design: the site key is embedded in every page. The secrets are
+    // set with `wrangler secret put TURNSTILE_SECRET` and `RESEND_API_KEY`.
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFktbyWGH6J6pHxl"
   }
 }

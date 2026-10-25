@@ -7,9 +7,9 @@ export interface Email {
   text: string;
 }
 
-// Production sends through Cloudflare Email Sending (the send_email binding),
-// which replaced the planned Resend account on 2026-10-24: one less service.
-// In "log" mode the message lands in the dev outbox instead.
+// Production sends through Resend's free plan (spec decision 3). Cloudflare Email
+// Sending was tried on 2026-10-24 and dropped: it needs the $5/month Workers Paid
+// plan. In "log" mode the message lands in the dev outbox instead.
 export async function sendEmail(env: Env, email: Email): Promise<void> {
   if (env.EMAIL_MODE === "log") {
     await env.DB.prepare(
@@ -20,15 +20,21 @@ export async function sendEmail(env: Env, email: Email): Promise<void> {
     return;
   }
 
-  try {
-    await env.EMAIL!.send({
-      from: { name: "Cookoff Champs", email: env.EMAIL_FROM },
-      to: email.to,
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: `Cookoff Champs <${env.EMAIL_FROM}>`,
+      to: [email.to],
       subject: email.subject,
       text: email.text,
-    });
-  } catch (err) {
-    console.error("email send failed", err);
+    }),
+  });
+  if (!res.ok) {
+    console.error("email send failed", res.status, await res.text());
     throw new HttpError(502, "Could not send email");
   }
 }

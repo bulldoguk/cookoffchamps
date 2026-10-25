@@ -105,13 +105,18 @@ describe("safeNext", () => {
 });
 
 describe("email delivery", () => {
-  it("sends through Cloudflare Email Sending outside log mode", async () => {
-    const send = vi.fn(async () => ({ messageId: "m1" }));
+  const resend = { ...env, EMAIL_MODE: "resend" as const, RESEND_API_KEY: "re_test" };
+
+  it("sends through Resend outside log mode", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ id: "m1" }));
     const { sendEmail } = await import("../../src/worker/email");
-    await sendEmail({ ...env, EMAIL_MODE: "cloudflare", EMAIL: { send } as unknown as SendEmail }, { to: "a@b.co", subject: "Hi", text: "Body" });
-    expect(send).toHaveBeenCalledWith({
-      from: { name: "Cookoff Champs", email: "hello@cookoffchamps.com" },
-      to: "a@b.co",
+    await sendEmail(resend, { to: "a@b.co", subject: "Hi", text: "Body" });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("https://api.resend.com/emails");
+    expect(new Headers(init!.headers).get("authorization")).toBe("Bearer re_test");
+    expect(JSON.parse(init!.body as string)).toEqual({
+      from: "Cookoff Champs <hello@cookoffchamps.com>",
+      to: ["a@b.co"],
       subject: "Hi",
       text: "Body",
     });
@@ -119,11 +124,9 @@ describe("email delivery", () => {
 
   it("reports a failed send as 502", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const send = vi.fn(async () => { throw new Error("domain not verified"); });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("domain not verified", { status: 403 }));
     const { sendEmail } = await import("../../src/worker/email");
-    await expect(
-      sendEmail({ ...env, EMAIL_MODE: "cloudflare", EMAIL: { send } as unknown as SendEmail }, { to: "a@b.co", subject: "Hi", text: "Body" }),
-    ).rejects.toMatchObject({ status: 502 });
+    await expect(sendEmail(resend, { to: "a@b.co", subject: "Hi", text: "Body" })).rejects.toMatchObject({ status: 502 });
   });
 
   it("shows the dev outbox only on localhost in log mode", async () => {
@@ -135,7 +138,7 @@ describe("email delivery", () => {
     expect(mail[0]).toMatchObject({ to: "box@example.com", subject: "Your Cookoff Champs login link" });
 
     expect(await readOutbox({ ...env, APP_ORIGIN: "https://cookoffchamps.com" })).toBeNull();
-    expect(await readOutbox({ ...env, EMAIL_MODE: "cloudflare" })).toBeNull();
+    expect(await readOutbox({ ...env, EMAIL_MODE: "resend" })).toBeNull();
   });
 
   it("hides the dev outbox route when it's off", async () => {
