@@ -15,6 +15,11 @@ describe("home, logged out", () => {
     expect(byText(ctx.root, "h2", "Here to vote?")).toBeTruthy();
     expect(byText(ctx.root, "h2", "Running a cookoff?")).toBeTruthy();
     expect(ctx.root.querySelector(".error")).toBeNull();
+    // The full hero, with the rosette as decoration only.
+    const hero = ctx.root.querySelector(".hero")!;
+    expect(hero.classList.contains("compact")).toBe(false);
+    expect(hero.querySelector("h1")!.textContent).toBe("Cookoff Champs");
+    expect(hero.querySelector("img")!.getAttribute("alt")).toBe("");
   });
 
   it("says when a login link has expired", async () => {
@@ -76,8 +81,10 @@ describe("home, logged in", () => {
     const ctx = makeCtx();
     await homeView(ctx);
     expect(ctx.root.textContent).toContain("Logged in as g@example.com");
+    expect(ctx.root.querySelector(".hero")!.classList.contains("compact")).toBe(true);
     const items = [...ctx.root.querySelectorAll(".events li")].map((li) => li.textContent);
-    expect(items).toEqual(["Chili Night 2026-11-01 · Voting open", "Pie Off Results out · co-organizer"]);
+    expect(items).toEqual(["Chili Night Sunday, November 1, 2026 · Voting open", "Pie Off Results out · co-organizer"]);
+    expect(ctx.root.querySelector(".events time")!.getAttribute("datetime")).toBe("2026-11-01");
     expect(ctx.root.querySelector<HTMLAnchorElement>(".events a")!.getAttribute("href")).toBe("/e/e1");
   });
 

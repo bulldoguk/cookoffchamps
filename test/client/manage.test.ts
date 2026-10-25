@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ManageView } from "../../src/client/types";
-import { entryForm, manageView, PEEK_MS, POLL_MS } from "../../src/client/views/manage";
+import { entryForm, manageView, PEEK_MS, POLL_MS, stepper } from "../../src/client/views/manage";
 import { byText, fakeApi, fill, flush, makeCtx, submit } from "./helpers";
 
 vi.mock("../../src/client/photo", () => ({ resizePhoto: vi.fn(async () => new Blob(["small"], { type: "image/jpeg" })) }));
@@ -60,9 +60,21 @@ describe("entryForm", () => {
   });
 });
 
+describe("progress stepper", () => {
+  const state = (status: string) =>
+    [...stepper(status).children].map((li) => `${li.textContent}:${li.className || "-"}:${li.getAttribute("aria-current") ?? "-"}`);
+
+  it("marks earlier steps done and the current one as the step", () => {
+    expect(state("setup")).toEqual(["Set up:-:step", "Voting:-:-", "Closed:-:-", "Results:-:-"]);
+    expect(state("closed")).toEqual(["Set up:done:-", "Voting:done:-", "Closed:-:step", "Results:-:-"]);
+    expect(state("revealed")).toEqual(["Set up:done:-", "Voting:done:-", "Closed:done:-", "Results:-:step"]);
+  });
+});
+
 describe("status controls", () => {
   it("opens voting from setup", async () => {
     const { ctx } = await open(view(), { "POST /api/events/e1/status": { status: "open" } });
+    expect(ctx.root.querySelector('.stepper [aria-current="step"]')!.textContent).toBe("Set up");
     expect(ctx.root.textContent).toContain("Add the dishes, print the poster, then open voting.");
     byText(ctx.root, "button", "Open voting").click();
     await flush();

@@ -16,6 +16,25 @@ export async function entryForm(fields: { cookName?: string; dishName?: string; 
   return form;
 }
 
+const STEPS: [string, string][] = [
+  ["setup", "Set up"],
+  ["open", "Voting"],
+  ["closed", "Closed"],
+  ["revealed", "Results"],
+];
+
+/** Where the event is in its life: set up → voting → closed → results. */
+export function stepper(status: string): HTMLElement {
+  const at = STEPS.findIndex(([s]) => s === status);
+  return h(
+    "ol",
+    { class: "stepper" },
+    ...STEPS.map(([, label], i) =>
+      h("li", { class: i < at ? "done" : undefined, "aria-current": i === at ? "step" : undefined }, label),
+    ),
+  );
+}
+
 /** The organizer's screen: set up, run voting, peek, and get to print and reveal. */
 export async function manageView(ctx: Ctx, eventId: string): Promise<() => void> {
   let data = await api<ManageView>(`/api/events/${eventId}`);
@@ -45,7 +64,7 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
 
   function statusControls(): HTMLElement {
     const s = data.event.status;
-    const box = h("section", { class: "card controls" });
+    const box = h("section", { class: "card controls", "aria-label": "Event progress" }, stepper(s));
     if (s === "setup") {
       box.append(h("p", {}, "Add the dishes, print the poster, then open voting."), h("button", { onclick: () => setStatus("open") }, "Open voting"));
     } else if (s === "open") {
@@ -283,8 +302,8 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
       h("p", {}, "Voting page: ", h("a", { href: `/v/${eventId}`, "data-link": true }, `${location.origin}/v/${eventId}`)),
       h("p", {}, "Typed code: ", h("strong", { class: "code" }, data.event.code)),
       h("p", {},
-        h("a", { class: "button", href: `/e/${eventId}/print/poster`, "data-link": true }, "Print the poster"), " ",
-        h("a", { class: "button", href: `/e/${eventId}/print/cards`, "data-link": true }, "Print the table cards")),
+        h("a", { class: "button secondary", href: `/e/${eventId}/print/poster`, "data-link": true }, "Print the poster"), " ",
+        h("a", { class: "button secondary", href: `/e/${eventId}/print/cards`, "data-link": true }, "Print the table cards")),
       h("details", {},
         h("summary", {}, "Edit name or date"),
         h("form", {

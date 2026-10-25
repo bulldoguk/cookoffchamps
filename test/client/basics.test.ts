@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, ApiError } from "../../src/client/api";
-import { h, mount, ordinal, photoUrl } from "../../src/client/dom";
+import { dateEl, h, logo, mount, ordinal, photoUrl } from "../../src/client/dom";
 import { fitWithin, resizePhoto } from "../../src/client/photo";
 import { qrSvg, renderQr } from "../../src/client/qr";
 import { getTurnstileToken, loadTurnstile, resetTurnstileLoader } from "../../src/client/turnstile";
@@ -38,6 +38,28 @@ describe("h and mount", () => {
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111].map(ordinal)).toEqual(
       ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "101st", "111th"],
     );
+  });
+});
+
+describe("dates and the logo", () => {
+  it("writes an event date out in full, without slipping a day", () => {
+    const el = dateEl("2026-11-01", "event-date");
+    expect(el.tagName).toBe("TIME");
+    expect(el.getAttribute("datetime")).toBe("2026-11-01");
+    expect(el.className).toBe("event-date");
+    expect(el.textContent).toBe("Sunday, November 1, 2026");
+  });
+
+  it("leaves a date it can't read as it was", () => {
+    expect(dateEl("someday").textContent).toBe("someday");
+  });
+
+  it("draws the rosette as decoration", () => {
+    const img = logo();
+    expect(img.getAttribute("src")).toBe("/favicon.svg");
+    expect(img.getAttribute("alt")).toBe("");
+    expect(img.className).toBe("logo");
+    expect(logo("poster-logo").className).toBe("poster-logo");
   });
 });
 

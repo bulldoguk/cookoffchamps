@@ -67,6 +67,7 @@ test("a whole cookoff: set up, print, vote blind, reveal 3-2-1, results", async 
     }
     await guest.locator(".dish", { hasText: dish }).click();
     await expect(guest.locator(".dish.chosen")).toContainText(dish);
+    await expect(guest.locator(".dish.chosen")).toHaveAttribute("aria-pressed", "true");
     await phone.close();
   }
 

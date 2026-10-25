@@ -1,6 +1,6 @@
 import { api } from "../api";
 import type { Ctx } from "../app";
-import { h, mount } from "../dom";
+import { h, logo, mount } from "../dom";
 import { renderQr } from "../qr";
 import type { ManageView } from "../types";
 
@@ -18,6 +18,7 @@ export async function printView(ctx: Ctx, eventId: string, kind: string): Promis
     h("a", { href: `/e/${eventId}`, "data-link": true }, "← Back"),
     " ",
     h("button", { onclick: () => window.print() }, "Print"),
+    h("span", { class: "muted" }, "Sized for US Letter paper"),
   );
 
   if (kind === "poster") {
@@ -28,6 +29,7 @@ export async function printView(ctx: Ctx, eventId: string, kind: string): Promis
       h(
         "div",
         { class: "page poster" },
+        logo("poster-logo"),
         h("h1", {}, data.event.name),
         h("p", { class: "lead" }, "Vote for your favourite dish!"),
         qr,
