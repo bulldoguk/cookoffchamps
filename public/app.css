@@ -116,7 +116,7 @@ button.danger, .danger { color: var(--bad); }
 
 .results .placings { list-style: none; padding: 0; }
 .results .place { font-size: 1.3rem; font-weight: 800; margin: 16px 0 8px; }
-.results .dish { max-width: 260px; display: inline-block; margin: 0 8px 8px 0; vertical-align: top; }
+.results .dish { width: min(46%, 220px); display: inline-block; margin: 0 8px 8px 0; vertical-align: top; }
 .cook { font-weight: 600; }
 
 /* Reveal: big type for a TV across the room */
