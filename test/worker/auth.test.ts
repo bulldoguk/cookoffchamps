@@ -17,7 +17,7 @@ describe("magic-link login", () => {
     expect(verify.status).toBe(302);
     expect(verify.headers.get("location")).toBe("/e/abc");
     const setCookie = verify.headers.get("set-cookie")!;
-    expect(setCookie).toMatch(/^cc_session=.+; Path=\/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax$/);
+    expect(setCookie).toMatch(/^__Host-cc_session=.+; Path=\/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax$/);
 
     const me = await call("/api/me", { cookie: setCookie.split(";")[0] });
     expect(await me.json()).toEqual({ email: "gary@example.com" });
@@ -73,7 +73,7 @@ describe("magic-link login", () => {
 describe("sessions", () => {
   it("needs a session for /api/me", async () => {
     expect((await call("/api/me")).status).toBe(401);
-    expect((await call("/api/me", { cookie: "cc_session=forged" })).status).toBe(401);
+    expect((await call("/api/me", { cookie: "__Host-cc_session=forged" })).status).toBe(401);
     expect((await call("/api/me", { cookie: "other=1" })).status).toBe(401);
   });
 

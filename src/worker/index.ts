@@ -51,7 +51,7 @@ const ROUTES: [string, string, Handler][] = [
   ["PATCH", "/api/entries/:id", updateEntry],
   ["DELETE", "/api/entries/:id", deleteEntry],
 
-  ["GET", "/api/public/codes/:code", (_r, env, code) => lookupCode(env, code!)],
+  ["GET", "/api/public/codes/:code", (r, env, code) => lookupCode(r, env, code!)],
   ["GET", "/api/public/events/:id", publicEvent],
   ["POST", "/api/public/events/:id/votes", castVote],
   ["GET", "/api/photos/*", (r, env, key) => getPhoto(env, key!, r)],

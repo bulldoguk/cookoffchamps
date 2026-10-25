@@ -7,6 +7,7 @@ import { MAX_LINKS_PER_EMAIL_PER_HOUR, MAX_LINKS_PER_IP_PER_HOUR, safeNext } fro
 import worker, { matchPath } from "../../src/worker/index";
 import { sniffImageType } from "../../src/worker/photos";
 import { CSP } from "../../src/worker/security";
+import { MAX_CODE_MISSES } from "../../src/worker/public";
 import { verifyTurnstile } from "../../src/worker/turnstile";
 import { call, jpeg, ORIGIN, latestLink, login, makeEntry, makeEvent, send, SIGNATURES } from "./helpers";
 
@@ -262,5 +263,61 @@ describe("Turnstile binding", () => {
   it("in local dev, accepts the test keys' placeholder host", async () => {
     answer({ success: true, hostname: "example.com" });
     expect(await verifyTurnstile(env, "tok", null)).toBe(true);
+  });
+});
+
+describe("typed-code lookup limit", () => {
+  const lookup = (code: string, ip?: string) => call(`/api/public/codes/${code}`, { headers: ip ? { "cf-connecting-ip": ip } : {} });
+
+  it("refuses a client after too many wrong codes, but not other clients", async () => {
+    const cookie = await login("codes@example.com");
+    const { code } = await makeEvent(cookie);
+    for (let i = 0; i < MAX_CODE_MISSES; i++) expect((await lookup(`MISS${i}`, "192.0.2.50")).status).toBe(404);
+    const blocked = await lookup(code, "192.0.2.50");
+    expect(blocked.status).toBe(429);
+    expect((await blocked.json<{ error: string }>()).error).toMatch(/Too many codes tried/);
+    expect((await lookup(code, "192.0.2.51")).status).toBe(200);
+  });
+
+  it("doesn't count right codes, so a room of guests on one wifi is never refused", async () => {
+    const cookie = await login("party@example.com");
+    const { code } = await makeEvent(cookie);
+    for (let i = 0; i < MAX_CODE_MISSES + 5; i++) expect((await lookup(code, "192.0.2.60")).status).toBe(200);
+  });
+
+  it("forgets misses outside the window, and stores the IP hashed", async () => {
+    for (let i = 0; i < MAX_CODE_MISSES; i++) await lookup(`OLD${i}`, "192.0.2.70");
+    const row = await env.DB.prepare("SELECT ip_hash FROM code_misses LIMIT 1").first<{ ip_hash: string }>();
+    expect(row!.ip_hash).toMatch(/^[0-9a-f]{64}$/);
+    await env.DB.prepare("UPDATE code_misses SET at = '2000-01-01T00:00:00Z'").run();
+    expect((await lookup("NOPE99", "192.0.2.70")).status).toBe(404);
+    const { n } = (await env.DB.prepare("SELECT COUNT(*) AS n FROM code_misses").first<{ n: number }>())!;
+    expect(n).toBe(1); // the stale rows were purged
+  });
+
+  it("records nothing when there's no client IP (outside Cloudflare)", async () => {
+    await env.DB.prepare("DELETE FROM code_misses").run();
+    expect((await lookup("NOIP99")).status).toBe(404);
+    const { n } = (await env.DB.prepare("SELECT COUNT(*) AS n FROM code_misses").first<{ n: number }>())!;
+    expect(n).toBe(0);
+  });
+});
+
+describe("__Host- session cookie", () => {
+  it("is set with the prefix's required attributes and no Domain", async () => {
+    await send("/api/auth/login", "POST", { email: "host@example.com" });
+    const link = new URL(await latestLink("host@example.com"));
+    const setCookie = (await call(link.pathname + link.search)).headers.get("set-cookie")!;
+    expect(setCookie.startsWith("__Host-cc_session=")).toBe(true);
+    expect(setCookie).toContain("; Path=/;");
+    expect(setCookie).toContain("; Secure");
+    expect(setCookie).not.toMatch(/domain=/i);
+  });
+
+  it("no longer accepts the old cookie name", async () => {
+    const cookie = await login("oldname@example.com");
+    const value = cookie.split("=").slice(1).join("=");
+    expect((await call("/api/me", { cookie })).status).toBe(200);
+    expect((await call("/api/me", { cookie: `cc_session=${value}` })).status).toBe(401);
   });
 });

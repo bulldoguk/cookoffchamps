@@ -8,7 +8,9 @@ import type { Env } from "./env";
 import { HttpError, json, readJson, requireEmail } from "./http";
 import { newId } from "./ids";
 
-export const SESSION_COOKIE = "cc_session";
+// __Host- makes the browser insist on Secure, Path=/ and no Domain, so neither a
+// subdomain nor a plain-http page can plant or overwrite the session cookie.
+export const SESSION_COOKIE = "__Host-cc_session";
 const LINK_TTL_MS = 15 * 60 * 1000;
 const SESSION_TTL_S = 30 * 24 * 60 * 60;
 
