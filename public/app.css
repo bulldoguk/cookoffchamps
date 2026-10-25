@@ -95,6 +95,15 @@ button.danger, .danger { color: var(--bad); }
 .thumb.none { display: grid; place-items: center; background: var(--line); font-size: 0.65rem; color: var(--muted); }
 .entry-form { border-top: 1px dashed var(--line); margin-top: 12px; padding-top: 8px; }
 
+.site-footer {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 32px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 /* Guest voting */
 .dishes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
 .dish {

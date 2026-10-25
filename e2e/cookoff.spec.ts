@@ -109,6 +109,7 @@ test("the typed code finds the event", async ({ page, request }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Log out" }).click();
   await expect(page.getByRole("heading", { name: "Running a cookoff?" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Hosted in the Barn" })).toHaveAttribute("href", "https://hostedinthebarn.com");
   await page.getByLabel("Type the code from the poster").fill(code!.toLowerCase());
   await page.getByRole("button", { name: "Go" }).click();
   await expect(page.getByRole("heading", { name: "Pie Off" })).toBeVisible();
