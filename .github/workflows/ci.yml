@@ -17,3 +17,22 @@ jobs:
       - run: npm run typecheck
       # Fails the build below 100% lines, branches, functions or statements.
       - run: npm run coverage
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Cloudflare's published always-pass Turnstile test secret, not a credential.
+      - run: cp .dev.vars.example .dev.vars
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/

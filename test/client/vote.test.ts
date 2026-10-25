@@ -1,0 +1,153 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PublicView } from "../../src/client/types";
+import { voteView } from "../../src/client/views/vote";
+import { fakeApi, flush, makeCtx } from "./helpers";
+
+vi.mock("../../src/client/turnstile", () => ({ getTurnstileToken: vi.fn(async () => "tok") }));
+import { getTurnstileToken } from "../../src/client/turnstile";
+
+function view(status: PublicView["event"]["status"], overrides: Partial<PublicView> = {}): PublicView {
+  return {
+    event: { id: "e1", code: "K7", name: "Chili Night", date: "2026-11-01", status },
+    turnstileSiteKey: "site",
+    myVotes: {},
+    categories: [
+      {
+        id: "c1",
+        name: "Main",
+        entries: [
+          { id: "n1", number: 1, dishName: "Red chili", photoKey: "events/e1/n1" },
+          { id: "n2", number: 2, dishName: "White chili", photoKey: null },
+        ],
+      },
+    ],
+    ...overrides,
+  };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+});
+
+describe("voting page", () => {
+  it("shows the dishes blind before voting opens, and they aren't tappable", async () => {
+    fakeApi({ "GET /api/public/events/e1": view("setup") });
+    const ctx = makeCtx("/v/e1");
+    await voteView(ctx, "e1");
+    expect(ctx.root.textContent).toContain("Voting hasn't opened yet.");
+    expect(ctx.root.textContent).toContain("2026-11-01");
+    const cards = ctx.root.querySelectorAll(".dish");
+    expect(cards[0]!.querySelector("img")!.getAttribute("src")).toBe("/api/photos/events/e1/n1");
+    expect(cards[1]!.querySelector(".no-photo")).not.toBeNull();
+    expect(cards[0]!.getAttribute("role")).toBeNull();
+    expect(ctx.root.querySelector("h2")).toBeNull();
+  });
+
+  it("casts a vote with a Turnstile token and marks it as mine", async () => {
+    const calls = fakeApi({ "GET /api/public/events/e1": view("open"), "POST /api/public/events/e1/votes": { ok: true } });
+    const ctx = makeCtx("/v/e1");
+    await voteView(ctx, "e1");
+    expect(ctx.root.textContent).toContain("Tap your favourite dish.");
+
+    ctx.root.querySelector<HTMLElement>('[data-entry="n2"]')!.click();
+    await flush();
+    expect(getTurnstileToken).toHaveBeenCalledWith("site", ctx.root.querySelector(".turnstile"));
+    expect(calls.at(-1)!.body).toEqual({ categoryId: "c1", entryId: "n2", turnstileToken: "tok" });
+    expect(ctx.root.querySelector(".status")!.textContent).toBe("Vote saved. Thanks!");
+    const chosen = ctx.root.querySelector(".chosen")!;
+    expect(chosen.getAttribute("data-entry")).toBe("n2");
+    expect(chosen.textContent).toContain("✓ Your vote");
+  });
+
+  it("says so when voting closed in the meantime", async () => {
+    fakeApi({ "GET /api/public/events/e1": view("open"), "POST /api/public/events/e1/votes": [409, { error: "Voting isn't open" }] });
+    const ctx = makeCtx("/v/e1");
+    await voteView(ctx, "e1");
+    ctx.root.querySelector<HTMLElement>(".dish")!.click();
+    await flush();
+    expect(ctx.root.querySelector(".status")!.textContent).toBe("Voting has closed.");
+  });
+
+  it("shows other failures as they come", async () => {
+    fakeApi({ "GET /api/public/events/e1": view("open") });
+    vi.mocked(getTurnstileToken).mockRejectedValueOnce(new Error("The vote check failed. Please try again."));
+    const ctx = makeCtx("/v/e1");
+    await voteView(ctx, "e1");
+    ctx.root.querySelector<HTMLElement>(".dish")!.click();
+    await flush();
+    expect(ctx.root.querySelector(".status")!.textContent).toBe("The vote check failed. Please try again.");
+  });
+
+  it("highlights the dish from a tent card and scrolls to it", async () => {
+    fakeApi({ "GET /api/public/events/e1": view("open", { myVotes: { c1: "n1" } }) });
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    const ctx = makeCtx("/v/e1?entry=n2");
+    await voteView(ctx, "e1");
+    expect(ctx.root.querySelector(".highlight")!.getAttribute("data-entry")).toBe("n2");
+    expect(ctx.root.querySelector(".chosen")!.getAttribute("data-entry")).toBe("n1");
+    expect(scroll).toHaveBeenCalledWith({ block: "center" });
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  it("copes with a browser that can't scroll, and with no date", async () => {
+    const data = view("open");
+    data.event.date = null;
+    fakeApi({ "GET /api/public/events/e1": data });
+    const ctx = makeCtx("/v/e1?entry=n1");
+    await voteView(ctx, "e1");
+    expect(ctx.root.querySelector(".muted")).toBeNull();
+  });
+
+  it("shows category headings and empty categories when there are several", async () => {
+    const data = view("open");
+    data.categories.push({ id: "c2", name: "Dessert", entries: [] });
+    fakeApi({ "GET /api/public/events/e1": data });
+    const ctx = makeCtx("/v/e1");
+    await voteView(ctx, "e1");
+    expect([...ctx.root.querySelectorAll("h2")].map((x) => x.textContent)).toEqual(["Main", "Dessert"]);
+    expect(ctx.root.textContent).toContain("No dishes yet.");
+  });
+
+  it("says the results are coming once closed", async () => {
+    fakeApi({ "GET /api/public/events/e1": view("closed") });
+    const ctx = makeCtx("/v/e1");
+    await voteView(ctx, "e1");
+    expect(ctx.root.textContent).toContain("Voting is closed. The results are coming soon!");
+  });
+});
+
+describe("results page (decision 13)", () => {
+  function revealed(placings: NonNullable<PublicView["categories"][number]["placings"]>, extraCategory = false): PublicView {
+    const v = view("revealed");
+    v.categories[0]!.entries = [
+      { id: "n1", number: 1, dishName: "Red chili", photoKey: "events/e1/n1", cookName: "Grandma", votes: 1 },
+      { id: "n2", number: 2, dishName: "White chili", photoKey: null, cookName: "Kiana", votes: 4 },
+      { id: "n3", number: 3, dishName: "Verde", photoKey: null, cookName: "Shannon", votes: 4 },
+    ];
+    v.categories[0]!.placings = placings;
+    if (extraCategory) v.categories.push({ id: "c2", name: "Dessert", entries: [], placings: [] });
+    return v;
+  }
+
+  it("shows co-champions, cooks and vote counts", async () => {
+    fakeApi({ "GET /api/public/events/e1": revealed([{ place: 1, entryIds: ["n2", "n3"], votes: 4 }, { place: 3, entryIds: ["n1"], votes: 1 }]) });
+    const ctx = makeCtx("/v/e1");
+    await voteView(ctx, "e1");
+    const places = [...ctx.root.querySelectorAll(".place")].map((p) => p.textContent);
+    expect(places).toEqual(["Co-champions!", "3rd place"]);
+    expect(ctx.root.textContent).toContain("by Kiana");
+    expect(ctx.root.textContent).toContain("4 votes");
+    expect(ctx.root.textContent).toContain("1 vote");
+    expect(ctx.root.querySelector("h2")).toBeNull();
+  });
+
+  it("marks a shared lower place as tied, and heads each category", async () => {
+    fakeApi({ "GET /api/public/events/e1": revealed([{ place: 1, entryIds: ["n1"], votes: 5 }, { place: 2, entryIds: ["n2", "n3"], votes: 4 }], true) });
+    const ctx = makeCtx("/v/e1");
+    await voteView(ctx, "e1");
+    expect([...ctx.root.querySelectorAll(".place")].map((p) => p.textContent)).toEqual(["1st place", "2nd place (tied)"]);
+    expect([...ctx.root.querySelectorAll("h2")].map((x) => x.textContent)).toEqual(["Main", "Dessert"]);
+  });
+});

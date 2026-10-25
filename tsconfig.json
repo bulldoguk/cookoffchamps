@@ -1,14 +1,16 @@
 {
+  // Worker side. The client has its own config (tsconfig.client.json), because
+  // the Workers types redefine DOM names like Element.append.
   "compilerOptions": {
     "target": "es2022",
     "module": "es2022",
     "moduleResolution": "bundler",
-    "lib": ["es2022", "dom"],
+    "lib": ["es2022"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types"]
   },
-  "include": ["src", "test", "vitest.config.ts"]
+  "include": ["src/worker", "src/shared", "test/worker", "test/shared", "test/*.ts", "vitest.config.ts"]
 }

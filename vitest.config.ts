@@ -4,16 +4,33 @@ import { defineConfig } from "vitest/config";
 export default defineConfig(async () => {
   const migrations = await readD1Migrations("./migrations");
   return {
-    plugins: [
-      cloudflareTest({
-        wrangler: { configPath: "./wrangler.jsonc" },
-        miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations, TURNSTILE_SECRET: "test-secret" },
-        },
-      }),
-    ],
     test: {
-      setupFiles: ["./test/apply-migrations.ts"],
+      projects: [
+        {
+          // The API, run inside the Workers runtime against local D1 and R2.
+          plugins: [
+            cloudflareTest({
+              wrangler: { configPath: "./wrangler.jsonc" },
+              miniflare: {
+                bindings: { TEST_MIGRATIONS: migrations, TURNSTILE_SECRET: "test-secret" },
+              },
+            }),
+          ],
+          test: {
+            name: "worker",
+            include: ["test/worker/**/*.test.ts", "test/shared/**/*.test.ts"],
+            setupFiles: ["./test/apply-migrations.ts"],
+          },
+        },
+        {
+          // The browser app, in jsdom with the API faked.
+          test: {
+            name: "client",
+            environment: "jsdom",
+            include: ["test/client/**/*.test.ts"],
+          },
+        },
+      ],
       coverage: {
         // The Workers runtime has no V8 coverage hook, so istanbul instruments instead.
         provider: "istanbul" as const,
