@@ -53,7 +53,7 @@ const ROUTES: [string, string, Handler][] = [
   ["GET", "/api/public/codes/:code", (_r, env, code) => lookupCode(env, code!)],
   ["GET", "/api/public/events/:id", publicEvent],
   ["POST", "/api/public/events/:id/votes", castVote],
-  ["GET", "/api/photos/*", (_r, env, key) => getPhoto(env, key!)],
+  ["GET", "/api/photos/*", (r, env, key) => getPhoto(env, key!, r)],
 ];
 
 /** Matches a path against a pattern, returning the captured segments or null. */

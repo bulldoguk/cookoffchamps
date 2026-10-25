@@ -23,17 +23,30 @@ export async function putPhoto(env: Env, eventId: string, entryId: string, file:
   return key;
 }
 
-/** GET /api/photos/<key> — public, like the event page itself. */
-export async function getPhoto(env: Env, key: string): Promise<Response> {
+/**
+ * GET /api/photos/<key> — public, like the event page itself.
+ *
+ * Served from the edge cache when it can be, so a room full of phones loading the
+ * same dishes costs one R2 read per photo per data centre, not one per phone. Keys
+ * never repeat, so a cached copy can't go stale; a deleted photo may linger at the
+ * edge, but only under a URL nothing links to any more.
+ */
+export async function getPhoto(env: Env, key: string, request: Request): Promise<Response> {
   if (!key.startsWith("events/")) throw new HttpError(404, "Not found");
+  const cache = caches.default;
+  const hit = await cache.match(request);
+  if (hit) return hit;
+
   const object = await env.PHOTOS.get(key);
   if (!object) throw new HttpError(404, "Not found");
-  return new Response(object.body, {
+  const response = new Response(object.body, {
     headers: {
       "content-type": object.httpMetadata?.contentType ?? "application/octet-stream",
       "cache-control": "public, max-age=31536000, immutable",
     },
   });
+  await cache.put(request, response.clone());
+  return response;
 }
 
 export async function deletePhotoPrefix(env: Env, prefix: string): Promise<void> {

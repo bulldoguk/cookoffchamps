@@ -43,6 +43,17 @@ describe("entries", () => {
     expect((await call(`/api/photos/`)).status).toBe(404);
   });
 
+  it("serves repeat photo loads from the edge cache, not R2", async () => {
+    await env.PHOTOS.put("events/x/cached", "first", { httpMetadata: { contentType: "image/jpeg" } });
+    const body = async (res: Response) => new TextDecoder().decode(await res.arrayBuffer());
+    expect(await body(await call("/api/photos/events/x/cached"))).toBe("first");
+    // Overwriting the object directly proves the second load never reached R2.
+    await env.PHOTOS.put("events/x/cached", "second");
+    const again = await call("/api/photos/events/x/cached");
+    expect(await body(again)).toBe("first");
+    expect(again.headers.get("content-type")).toBe("image/jpeg");
+  });
+
   it("serves a photo stored without a content type as octet-stream", async () => {
     await env.PHOTOS.put("events/x/bare", "x");
     const res = await call("/api/photos/events/x/bare");
