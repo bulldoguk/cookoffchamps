@@ -36,11 +36,13 @@ describe("voting page", () => {
     const ctx = makeCtx("/v/e1");
     await voteView(ctx, "e1");
     expect(ctx.root.textContent).toContain("Voting hasn't opened yet.");
-    expect(ctx.root.textContent).toContain("2026-11-01");
+    expect(ctx.root.textContent).toContain("Sunday, November 1, 2026");
+    expect(ctx.root.querySelector("time")!.getAttribute("datetime")).toBe("2026-11-01");
     const cards = ctx.root.querySelectorAll(".dish");
     expect(cards[0]!.querySelector("img")!.getAttribute("src")).toBe("/api/photos/events/e1/n1");
     expect(cards[1]!.querySelector(".no-photo")).not.toBeNull();
     expect(cards[0]!.getAttribute("role")).toBeNull();
+    expect(cards[0]!.hasAttribute("aria-pressed")).toBe(false);
     expect(ctx.root.querySelector("h2")).toBeNull();
   });
 
@@ -50,7 +52,14 @@ describe("voting page", () => {
     await voteView(ctx, "e1");
     expect(ctx.root.textContent).toContain("Tap your favourite dish.");
 
-    ctx.root.querySelector<HTMLElement>('[data-entry="n2"]')!.click();
+    const before = ctx.root.querySelector<HTMLElement>('[data-entry="n2"]')!;
+    expect(before.getAttribute("aria-pressed")).toBe("false");
+    expect(before.getAttribute("aria-label")).toBe("Entry 2, White chili");
+    before.click();
+    // The tapped card answers straight away, before the vote has gone through.
+    expect(before.classList.contains("pending")).toBe(true);
+    expect(before.getAttribute("aria-busy")).toBe("true");
+    expect(ctx.root.querySelector(".status")!.textContent).toBe("Voting…");
     await flush();
     expect(getTurnstileToken).toHaveBeenCalledWith("site", ctx.root.querySelector(".turnstile"));
     expect(calls.at(-1)!.body).toEqual({ categoryId: "c1", entryId: "n2", turnstileToken: "tok" });
@@ -58,15 +67,42 @@ describe("voting page", () => {
     const chosen = ctx.root.querySelector(".chosen")!;
     expect(chosen.getAttribute("data-entry")).toBe("n2");
     expect(chosen.textContent).toContain("✓ Your vote");
+    expect(chosen.getAttribute("aria-pressed")).toBe("true");
+    expect(chosen.classList.contains("pending")).toBe(false);
+  });
+
+  it("votes from the keyboard with Enter or Space, and ignores other keys", async () => {
+    const calls = fakeApi({ "GET /api/public/events/e1": view("open"), "POST /api/public/events/e1/votes": { ok: true } });
+    const ctx = makeCtx("/v/e1");
+    await voteView(ctx, "e1");
+    const card = ctx.root.querySelector<HTMLElement>('[data-entry="n1"]')!;
+    card.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+    await flush();
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(0);
+
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    card.dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(true);
+    await flush();
+    expect(calls.at(-1)!.body).toMatchObject({ entryId: "n1" });
+
+    ctx.root.querySelector<HTMLElement>('[data-entry="n2"]')!.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+    await flush();
+    expect(calls.at(-1)!.body).toMatchObject({ entryId: "n2" });
+    expect(ctx.root.querySelector(".chosen")!.getAttribute("data-entry")).toBe("n2");
   });
 
   it("says so when voting closed in the meantime", async () => {
     fakeApi({ "GET /api/public/events/e1": view("open"), "POST /api/public/events/e1/votes": [409, { error: "Voting isn't open" }] });
     const ctx = makeCtx("/v/e1");
     await voteView(ctx, "e1");
-    ctx.root.querySelector<HTMLElement>(".dish")!.click();
+    const card = ctx.root.querySelector<HTMLElement>(".dish")!;
+    card.click();
     await flush();
     expect(ctx.root.querySelector(".status")!.textContent).toBe("Voting has closed.");
+    // A failed vote doesn't leave the card looking busy.
+    expect(card.classList.contains("pending")).toBe(false);
+    expect(card.hasAttribute("aria-busy")).toBe(false);
   });
 
   it("shows other failures as they come", async () => {
@@ -137,6 +173,8 @@ describe("results page (decision 13)", () => {
     await voteView(ctx, "e1");
     const places = [...ctx.root.querySelectorAll(".place")].map((p) => p.textContent);
     expect(places).toEqual(["Co-champions!", "3rd place"]);
+    // Each placing carries its place, for the gold, silver and bronze styling.
+    expect([...ctx.root.querySelectorAll(".placings > li")].map((li) => li.getAttribute("data-place"))).toEqual(["1", "3"]);
     expect(ctx.root.textContent).toContain("by Kiana");
     expect(ctx.root.textContent).toContain("4 votes");
     expect(ctx.root.textContent).toContain("1 vote");

@@ -1,6 +1,6 @@
 import { api, ApiError } from "../api";
 import type { Ctx } from "../app";
-import { h, mount, ordinal, photoUrl } from "../dom";
+import { dateEl, h, mount, ordinal, photoUrl } from "../dom";
 import { getTurnstileToken } from "../turnstile";
 import type { PublicEntry, PublicView } from "../types";
 
@@ -26,7 +26,7 @@ function results(view: PublicView): Node[] {
       h("ol", { class: "placings" }, ...c.placings!.map((p) =>
         h(
           "li",
-          {},
+          { "data-place": p.place },
           h("p", { class: "place" }, p.place === 1 && p.entryIds.length > 1 ? "Co-champions!" : `${ordinal(p.place)} place${p.entryIds.length > 1 ? " (tied)" : ""}`),
           ...p.entryIds.map((id) => {
             const e = c.entries.find((x) => x.id === id)!;
@@ -43,9 +43,10 @@ export async function voteView(ctx: Ctx, eventId: string): Promise<void> {
   const view = await api<PublicView>(`/api/public/events/${eventId}`);
   const { event } = view;
   const highlight = ctx.url.searchParams.get("entry");
-  const notice = h("p", { class: "status", role: "status" });
+  // Fixed near the bottom of the screen, so the guest sees it wherever they scrolled.
+  const notice = h("p", { class: "status toast", role: "status" });
   const turnstileBox = h("div", { class: "turnstile" });
-  const header = [h("h1", {}, event.name), event.date ? h("p", { class: "muted" }, event.date) : null];
+  const header = [h("h1", {}, event.name), event.date ? h("p", { class: "muted event-date" }, dateEl(event.date)) : null];
 
   if (event.status === "revealed") {
     mount(ctx.root, ...header, ...results(view));
@@ -60,7 +61,10 @@ export async function voteView(ctx: Ctx, eventId: string): Promise<void> {
         ? "Tap your favourite dish. You can change your mind until voting closes."
         : "Voting is closed. The results are coming soon!";
 
-  async function castVote(categoryId: string, entryId: string): Promise<void> {
+  async function castVote(categoryId: string, entryId: string, card: HTMLElement): Promise<void> {
+    // Instant feedback on the card that was tapped, before the round trip.
+    card.classList.add("pending");
+    card.setAttribute("aria-busy", "true");
     notice.textContent = "Voting…";
     try {
       const token = await getTurnstileToken(view.turnstileSiteKey, turnstileBox);
@@ -69,6 +73,8 @@ export async function voteView(ctx: Ctx, eventId: string): Promise<void> {
       notice.textContent = "Vote saved. Thanks!";
       draw();
     } catch (err) {
+      card.classList.remove("pending");
+      card.removeAttribute("aria-busy");
       if (err instanceof ApiError && err.status === 409) {
         notice.textContent = "Voting has closed.";
       } else {
@@ -98,7 +104,15 @@ export async function voteView(ctx: Ctx, eventId: string): Promise<void> {
             if (open) {
               card.setAttribute("role", "button");
               card.setAttribute("tabindex", "0");
-              card.addEventListener("click", () => void castVote(c.id, e.id));
+              card.setAttribute("aria-pressed", String(mine));
+              card.setAttribute("aria-label", `Entry ${e.number}, ${e.dishName}`);
+              card.addEventListener("click", () => void castVote(c.id, e.id, card));
+              // A div with role=button needs the keys a real button gets for free.
+              card.addEventListener("keydown", (ev) => {
+                if (ev.key !== "Enter" && ev.key !== " ") return;
+                ev.preventDefault();
+                void castVote(c.id, e.id, card);
+              });
             }
             return card;
           })),

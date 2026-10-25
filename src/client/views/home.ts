@@ -1,6 +1,6 @@
 import { api, ApiError } from "../api";
 import type { Ctx } from "../app";
-import { h, mount } from "../dom";
+import { dateEl, h, logo, mount } from "../dom";
 import type { EventSummary } from "../types";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -11,11 +11,20 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 function codeForm(ctx: Ctx): HTMLElement {
-  const input = h("input", { name: "code", placeholder: "e.g. K7QM2X", autocapitalize: "characters", required: true, maxlength: 6 }) as HTMLInputElement;
+  const input = h("input", {
+    name: "code",
+    class: "code-input",
+    placeholder: "e.g. K7QM2X",
+    autocapitalize: "characters",
+    autocomplete: "off",
+    spellcheck: "false",
+    required: true,
+    maxlength: 6,
+  }) as HTMLInputElement;
   return h(
     "form",
     {
-      class: "card",
+      class: "card feature",
       onsubmit: (e: Event) => {
         e.preventDefault();
         ctx.navigate(`/c/${encodeURIComponent(input.value.trim().toUpperCase())}`);
@@ -81,6 +90,17 @@ function createForm(ctx: Ctx): HTMLElement {
   );
 }
 
+/** The brand, big on the guest's landing page and smaller once logged in. */
+function hero(compact: boolean): HTMLElement {
+  return h(
+    "header",
+    { class: compact ? "hero compact" : "hero" },
+    logo(),
+    h("h1", {}, "Cookoff Champs"),
+    h("p", { class: "tagline" }, "Blind tasting, honest votes, and winners revealed 3rd to 1st."),
+  );
+}
+
 export async function homeView(ctx: Ctx): Promise<void> {
   let email: string | null = null;
   try {
@@ -90,7 +110,7 @@ export async function homeView(ctx: Ctx): Promise<void> {
   }
 
   if (!email) {
-    mount(ctx.root, h("h1", {}, "Cookoff Champs"), codeForm(ctx), loginForm(ctx));
+    mount(ctx.root, hero(false), codeForm(ctx), loginForm(ctx));
     return;
   }
 
@@ -105,7 +125,7 @@ export async function homeView(ctx: Ctx): Promise<void> {
 
   mount(
     ctx.root,
-    h("h1", {}, "Cookoff Champs"),
+    hero(true),
     h("p", { class: "muted" }, `Logged in as ${email} `, logout),
     createForm(ctx),
     h("h2", {}, "Your cookoffs"),
@@ -119,7 +139,13 @@ export async function homeView(ctx: Ctx): Promise<void> {
               {},
               h("a", { href: `/e/${ev.id}`, "data-link": true }, ev.name),
               " ",
-              h("span", { class: "muted" }, [ev.date, STATUS_LABEL[ev.status], ev.role === "co" ? "co-organizer" : null].filter(Boolean).join(" · ")),
+              h(
+                "span",
+                { class: "muted" },
+                ev.date ? dateEl(ev.date) : null,
+                ev.date ? " · " : null,
+                [STATUS_LABEL[ev.status], ev.role === "co" ? "co-organizer" : null].filter(Boolean).join(" · "),
+              ),
             ),
           ),
         )

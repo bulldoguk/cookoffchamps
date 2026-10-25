@@ -2,13 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="Friendly family cookoffs: blind voting by QR code, winners revealed 3rd to 1st." />
+    <meta name="theme-color" content="#fffaf3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a1310" media="(prefers-color-scheme: dark)" />
     <title>Cookoff Champs</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <link rel="stylesheet" href="/app.css" />
     <script type="module" src="/app.js"></script>
   </head>
   <body>
+    <header class="masthead no-print">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="34" height="34" />Cookoff Champs</a>
+    </header>
     <main id="app">
       <h1>Cookoff Champs</h1>
       <noscript>Cookoff Champs needs JavaScript turned on.</noscript>

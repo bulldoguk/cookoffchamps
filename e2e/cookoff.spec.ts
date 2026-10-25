@@ -67,6 +67,7 @@ test("a whole cookoff: set up, print, vote blind, reveal 3-2-1, results", async 
     }
     await guest.locator(".dish", { hasText: dish }).click();
     await expect(guest.locator(".dish.chosen")).toContainText(dish);
+    await expect(guest.locator(".dish.chosen")).toHaveAttribute("aria-pressed", "true");
     await phone.close();
   }
 
@@ -114,4 +115,17 @@ test("the typed code finds the event", async ({ page, request }) => {
   await page.getByRole("button", { name: "Go" }).click();
   await expect(page.getByRole("heading", { name: "Pie Off" })).toBeVisible();
   await expect(page.getByText("Voting hasn't opened yet.")).toBeVisible();
+});
+
+test("the favicon, touch icon and manifest are served and linked", async ({ page, request }) => {
+  await page.goto("/");
+  for (const [rel, type] of [["icon", "image/svg+xml"], ["apple-touch-icon", "image/png"], ["manifest", "application/manifest+json"]]) {
+    const href = await page.locator(`link[rel="${rel}"]`).first().getAttribute("href");
+    const res = await request.get(href!);
+    expect(res.status(), href!).toBe(200);
+    expect(res.headers()["content-type"], href!).toContain(type);
+  }
+  const manifest = await (await request.get("/site.webmanifest")).json();
+  for (const icon of manifest.icons) expect((await request.get(icon.src)).status(), icon.src).toBe(200);
+  expect((await request.get("/favicon-32.png")).status()).toBe(200);
 });

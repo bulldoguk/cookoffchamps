@@ -1,7 +1,7 @@
 import { revealSequence, type RevealStep } from "../../shared/ranking";
 import { api } from "../api";
 import type { Ctx } from "../app";
-import { h, mount, ordinal, photoUrl } from "../dom";
+import { dateEl, h, logo, mount, ordinal, photoUrl } from "../dom";
 import type { ManageView, Totals } from "../types";
 
 interface Slide {
@@ -23,10 +23,34 @@ export function placeLabel(step: RevealStep): string {
   return `${ordinal(step.place)} place${step.entryIds.length > 1 ? " (tied)" : ""}`;
 }
 
+const CONFETTI_COLOURS = ["var(--gold)", "var(--accent)", "var(--good)", "var(--silver)", "var(--bronze)", "var(--confetti-extra)"];
+
+/**
+ * A one-off shower of confetti for the champion. The pieces are spread by a
+ * fixed formula rather than at random, so every reveal (and every test) looks
+ * the same. CSS drops them once and hides them under prefers-reduced-motion.
+ */
+export function confetti(count = 72): HTMLElement {
+  const box = h("div", { class: "confetti", "aria-hidden": "true" });
+  for (let i = 0; i < count; i++) {
+    const style = [
+      `--x:${(i * 37) % 100}%`,
+      `--d:${((i * 53) % 140) / 100}s`,
+      `--t:${3 + ((i * 29) % 25) / 10}s`,
+      `--w:${8 + ((i * 7) % 8)}px`,
+      `--r:${360 + ((i * 97) % 540)}deg`,
+      `--sway:${((i * 61) % 160) - 80}px`,
+      `--c:${CONFETTI_COLOURS[i % CONFETTI_COLOURS.length]}`,
+    ].join(";");
+    box.append(h("span", { style }));
+  }
+  return box;
+}
+
 /** /e/:id/reveal, for a phone or a TV. Click, tap, space or → for the next place. */
 export async function revealView(ctx: Ctx, eventId: string): Promise<() => void> {
   const data = await api<ManageView>(`/api/events/${eventId}`);
-  const back = h("p", {}, h("a", { href: `/e/${eventId}`, "data-link": true }, "← Back to the event"));
+  const back = h("p", { class: "reveal-back" }, h("a", { href: `/e/${eventId}`, "data-link": true }, "← Back to the event"));
 
   if (data.event.status !== "closed" && data.event.status !== "revealed") {
     mount(ctx.root, back, h("h1", {}, "Not yet"), h("p", {}, "Close voting first, then come back to reveal the winners."));
@@ -36,17 +60,30 @@ export async function revealView(ctx: Ctx, eventId: string): Promise<() => void>
   const { totals } = await api<Totals>(`/api/events/${eventId}/totals`);
   const slides = buildSlides(data, totals);
   let shown = -1; // -1 is the title card
-  const stage = h("div", { class: "reveal", tabindex: "0" });
+  // aria-live, so a screen reader announces each place as it lands.
+  const stage = h("div", { class: "reveal", tabindex: "0", "aria-live": "polite" });
 
   function draw(): void {
     if (shown < 0) {
-      stage.replaceChildren(h("h1", {}, data.event.name), h("p", { class: "hint" }, slides.length ? "Tap for 3rd place" : "There are no dishes to reveal."));
+      mount(
+        stage,
+        logo(),
+        h("h1", {}, data.event.name),
+        data.event.date ? dateEl(data.event.date, "event-date") : null,
+        h("p", { class: "hint" }, slides.length ? "Tap for 3rd place" : "There are no dishes to reveal."),
+      );
       return;
     }
     const { category, step } = slides[shown]!;
+    stage.dataset.place = String(step.place);
+    const champion = step.place === 1;
     mount(
       stage,
+      champion ? h("div", { class: "sunburst", "aria-hidden": "true" }) : null,
+      champion ? confetti() : null,
       category ? h("p", { class: "category" }, category) : null,
+      // The medal repeats the place for the eye; the label below says it for everyone.
+      h("div", { class: "medal", "aria-hidden": "true" }, String(step.place)),
       h("p", { class: "place" }, placeLabel(step)),
       h("div", { class: "winners" }, ...step.entryIds.map((id) => {
         const e = data.entries.find((x) => x.id === id)!;
@@ -56,11 +93,12 @@ export async function revealView(ctx: Ctx, eventId: string): Promise<() => void>
           e.photoKey ? h("img", { src: photoUrl(e.photoKey), alt: e.dishName }) : null,
           h("p", { class: "dish-name" }, e.dishName),
           // The cook's name is seen here for the first time (decision 9).
+          h("p", { class: "cook-label" }, "Cooked by"),
           h("p", { class: "cook" }, e.cookName),
           h("p", { class: "votes" }, `${step.votes} vote${step.votes === 1 ? "" : "s"}`),
         );
       })),
-      shown < slides.length - 1 ? h("p", { class: "hint" }, "Tap for the next place") : h("p", { class: "hint" }, "🎉"),
+      shown < slides.length - 1 ? h("p", { class: "hint" }, "Tap for the next place") : h("p", { class: "hint" }, "🎉 Congratulations to every cook!"),
     );
   }
 
@@ -84,7 +122,8 @@ export async function revealView(ctx: Ctx, eventId: string): Promise<() => void>
   stage.addEventListener("click", () => void next());
   document.addEventListener("keydown", onKey);
   mount(ctx.root, back, stage);
+  // Not focused on load: the keys work from anywhere on the page, and a focus
+  // ring around the whole stage would look like a fault on a TV.
   draw();
-  stage.focus();
   return () => document.removeEventListener("keydown", onKey);
 }
