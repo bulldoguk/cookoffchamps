@@ -15,6 +15,10 @@ export async function verifyTurnstile(env: Env, token: unknown, ip: string | nul
     body: form,
   });
   if (!res.ok) return false;
-  const outcome = await res.json<{ success?: boolean }>();
-  return outcome.success === true;
+  const outcome = await res.json<{ success?: boolean; hostname?: string }>();
+  if (outcome.success !== true) return false;
+  // A token solved on another site that uses the same key doesn't count. Local
+  // dev runs Cloudflare's test keys, whose tokens name a placeholder host.
+  const expected = new URL(env.APP_ORIGIN).hostname;
+  return expected === "localhost" || outcome.hostname === expected;
 }

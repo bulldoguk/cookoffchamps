@@ -152,6 +152,15 @@ describe("code lookup page", () => {
     expect(ctx.root.textContent).toContain("the code NOPE");
   });
 
+  it("shows the server's message and the code box again when rate-limited", async () => {
+    fakeApi({ "GET /api/public/codes/X": [429, { error: "Too many codes tried. Please wait a few minutes." }] });
+    const ctx = makeCtx();
+    await codeView(ctx, "X");
+    expect(ctx.root.querySelector(".error")!.textContent).toBe("Too many codes tried. Please wait a few minutes.");
+    expect(ctx.root.querySelector("input")).not.toBeNull();
+    expect(ctx.navigate).not.toHaveBeenCalled();
+  });
+
   it("lets other failures surface", async () => {
     fakeApi({ "GET /api/public/codes/X": [500, {}] });
     await expect(codeView(makeCtx(), "X")).rejects.toMatchObject({ status: 500 });

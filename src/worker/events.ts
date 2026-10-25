@@ -211,14 +211,17 @@ export async function addOrganizer(request: Request, env: Env, eventId: string):
     .bind(eventId, invitee)
     .first();
   if (existing) throw new HttpError(409, "They're already an organizer");
-  await env.DB.prepare("INSERT INTO organizers (event_id, email, role) VALUES (?, ?, 'co')").bind(eventId, invitee).run();
+  // The email goes first: invites share the login-link rate limits, and a
+  // refused send shouldn't leave behind an organizer who was never told.
   await sendLoginLink(
     env,
+    request,
     invitee,
     `/e/${eventId}`,
     `You're helping run ${event.name}`,
     `${email} has made you a co-organizer of "${event.name}" on Cookoff Champs. This link logs you in and opens the event.`,
   );
+  await env.DB.prepare("INSERT INTO organizers (event_id, email, role) VALUES (?, ?, 'co')").bind(eventId, invitee).run();
   return json({ ok: true }, 201);
 }
 

@@ -56,8 +56,18 @@ export async function makeEntry(cookie: string, categoryId: string, cookName = "
   return res.json<{ id: string; number: number; photoKey: string | null }>();
 }
 
-export function jpeg(bytes = 10, type = "image/jpeg"): File {
-  return new File([new Uint8Array(bytes)], "dish.jpg", { type });
+// The leading bytes of each image type the Worker accepts; it checks them.
+export const SIGNATURES: Record<string, number[]> = {
+  "image/jpeg": [0xff, 0xd8, 0xff],
+  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  "image/webp": [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50],
+};
+
+/** A `bytes`-long file declared as `type`, starting with that type's real signature. */
+export function jpeg(bytes = 12, type = "image/jpeg"): File {
+  const data = new Uint8Array(bytes);
+  data.set((SIGNATURES[type] ?? []).slice(0, bytes));
+  return new File([data], "dish.jpg", { type });
 }
 
 /**

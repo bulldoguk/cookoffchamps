@@ -16,11 +16,11 @@ async function readForm(request: Request): Promise<FormData> {
   }
 }
 
-function photoFrom(form: FormData): File | null {
+/** The uploaded photo with its checked type, or null if none was sent. */
+async function photoFrom(form: FormData): Promise<{ file: File; type: string } | null> {
   const value = form.get("photo");
   if (!(value instanceof File) || value.size === 0) return null;
-  checkPhoto(value);
-  return value;
+  return { file: value, type: await checkPhoto(value) };
 }
 
 /** POST /api/categories/:id/entries (form: cookName, dishName, photo?) */
@@ -31,10 +31,10 @@ export async function addEntry(request: Request, env: Env, categoryId: string): 
   const form = await readForm(request);
   const cookName = requireText(form.get("cookName"), "cookName", 80);
   const dishName = requireText(form.get("dishName"), "dishName", 80);
-  const photo = photoFrom(form);
+  const photo = await photoFrom(form);
 
   const id = newId();
-  const photoKey = photo ? await putPhoto(env, event.id, id, photo) : null;
+  const photoKey = photo ? await putPhoto(env, event.id, id, photo.file, photo.type) : null;
   // Numbers run on within the category: "Entry 3" matches tent card 3 (decision 11).
   const row = await env.DB.prepare(
     `INSERT INTO entries (id, category_id, number, cook_name, dish_name, photo_key)
@@ -58,10 +58,10 @@ export async function updateEntry(request: Request, env: Env, entryId: string): 
 
   const cookName = form.has("cookName") ? requireText(form.get("cookName"), "cookName", 80) : current!.cook_name;
   const dishName = form.has("dishName") ? requireText(form.get("dishName"), "dishName", 80) : current!.dish_name;
-  const photo = photoFrom(form);
+  const photo = await photoFrom(form);
   let photoKey = current!.photo_key;
   if (photo) {
-    photoKey = await putPhoto(env, event.id, entryId, photo);
+    photoKey = await putPhoto(env, event.id, entryId, photo.file, photo.type);
     if (current!.photo_key) await env.PHOTOS.delete(current!.photo_key);
   }
 

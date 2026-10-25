@@ -160,6 +160,10 @@ export async function codeView(ctx: Ctx, code: string): Promise<void> {
     const { id } = await api<{ id: string }>(`/api/public/codes/${encodeURIComponent(code)}`);
     ctx.navigate(`/v/${id}`);
   } catch (err) {
+    if (err instanceof ApiError && err.status === 429) {
+      mount(ctx.root, h("h1", {}, "Cookoff Champs"), h("p", { class: "error" }, err.message), codeForm(ctx));
+      return;
+    }
     if (!(err instanceof ApiError && err.status === 404)) throw err;
     mount(ctx.root, h("h1", {}, "No such code"), h("p", {}, `We couldn't find a cookoff with the code ${code}. Check the poster and try again.`), codeForm(ctx));
   }

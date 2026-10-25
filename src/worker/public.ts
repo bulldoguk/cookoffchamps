@@ -3,6 +3,7 @@
 
 import { rankTallies } from "../shared/ranking";
 import { loadEvent } from "./access";
+import { clientIp, sha256 } from "./auth";
 import { cookie, readCookie } from "./cookies";
 import type { Env } from "./env";
 import { HttpError, json, readJson } from "./http";
@@ -22,10 +23,35 @@ interface EntryRow {
   votes: number;
 }
 
-/** GET /api/public/codes/:code — the typed fallback for the QR code. */
-export async function lookupCode(env: Env, code: string): Promise<Response> {
+// Wrong codes allowed per client in the window before lookups are refused. A
+// family mistyping a poster makes a few; guessing at 31^6 codes needs millions.
+export const MAX_CODE_MISSES = 20;
+const CODE_WINDOW_MS = 10 * 60 * 1000;
+
+/**
+ * GET /api/public/codes/:code — the typed fallback for the QR code. Rate-limited
+ * on wrong codes per client, so the short code can't be used to sweep for events.
+ */
+export async function lookupCode(request: Request, env: Env, code: string): Promise<Response> {
+  const ip = clientIp(request);
+  const ipHash = ip ? await sha256(ip) : null;
+  const since = new Date(Date.now() - CODE_WINDOW_MS).toISOString();
+  if (ipHash) {
+    await env.DB.prepare("DELETE FROM code_misses WHERE at < ?").bind(since).run();
+    const misses = await env.DB.prepare("SELECT COUNT(*) AS n FROM code_misses WHERE ip_hash = ? AND at > ?")
+      .bind(ipHash, since)
+      .first<{ n: number }>();
+    if (misses!.n >= MAX_CODE_MISSES) {
+      throw new HttpError(429, "Too many codes tried. Please wait a few minutes, or scan the QR code on the poster.");
+    }
+  }
   const row = await env.DB.prepare("SELECT id FROM events WHERE code = ?").bind(code.toUpperCase()).first<{ id: string }>();
-  if (!row) throw new HttpError(404, "No event with that code");
+  if (!row) {
+    if (ipHash) {
+      await env.DB.prepare("INSERT INTO code_misses (ip_hash, at) VALUES (?, ?)").bind(ipHash, new Date().toISOString()).run();
+    }
+    throw new HttpError(404, "No event with that code");
+  }
   return json({ id: row.id });
 }
 
@@ -89,12 +115,15 @@ export async function castVote(request: Request, env: Env, eventId: string): Pro
   const event = await loadEvent(env, eventId);
   if (event.status !== "open") throw new HttpError(409, "Voting isn't open");
   const body = await readJson(request);
+  if (typeof body.categoryId !== "string" || typeof body.entryId !== "string") {
+    throw new HttpError(400, "That entry isn't in this category");
+  }
 
   const entry = await env.DB.prepare(
     `SELECT e.id FROM entries e JOIN categories c ON c.id = e.category_id
       WHERE e.id = ? AND e.category_id = ? AND c.event_id = ?`,
   )
-    .bind(body.entryId ?? "", body.categoryId ?? "", eventId)
+    .bind(body.entryId, body.categoryId, eventId)
     .first();
   if (!entry) throw new HttpError(400, "That entry isn't in this category");
 
