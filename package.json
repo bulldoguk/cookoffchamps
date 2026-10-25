@@ -1,0 +1,24 @@
+{
+  "name": "cookoffchamps",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Family cookoff voting: organizers set up an event, guests scan a QR code and vote blind, winners are revealed 3rd to 1st.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "db:migrate:local": "wrangler d1 migrations apply cookoffchamps --local"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.4.0",
+    "@cloudflare/workers-types": "5.20261008.1",
+    "@vitest/coverage-istanbul": "5.0.3",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3",
+    "wrangler": "4.149.0"
+  }
+}
