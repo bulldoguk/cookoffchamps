@@ -23,6 +23,10 @@
   "vars": {
     // "log" prints magic links instead of emailing them. Production sets "resend".
     "EMAIL_MODE": "log",
-    "APP_ORIGIN": "http://localhost:8787"
+    "APP_ORIGIN": "http://localhost:8787",
+    "EMAIL_FROM": "Cookoff Champs <hello@cookoffchamps.com>",
+    // Cloudflare's published always-pass Turnstile test site key. Production
+    // overrides it; TURNSTILE_SECRET comes from .dev.vars or `wrangler secret`.
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA"
   }
 }

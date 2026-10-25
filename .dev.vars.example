@@ -1,0 +1,3 @@
+# Copy to .dev.vars for `npm run dev`. These are Cloudflare's published
+# always-pass Turnstile test secret, not a real credential.
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA

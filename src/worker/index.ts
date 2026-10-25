@@ -1,21 +1,107 @@
+import { logout, me, requestLogin, verifyLogin } from "./auth";
+import { readOutbox } from "./email";
+import { addEntry, deleteEntry, updateEntry } from "./entries";
 import type { Env } from "./env";
-import { error, json } from "./http";
+import {
+  addCategory,
+  addOrganizer,
+  createEvent,
+  deleteCategory,
+  deleteEvent,
+  listEvents,
+  manageEvent,
+  removeOrganizer,
+  renameCategory,
+  setStatus,
+  totals,
+  updateEvent,
+} from "./events";
+import { error, HttpError, json } from "./http";
+import { getPhoto } from "./photos";
+import { castVote, lookupCode, publicEvent } from "./public";
+
+type Handler = (request: Request, env: Env, ...params: string[]) => Promise<Response>;
+
+// [method, pattern, handler]. ":x" matches one path segment; "*" the rest.
+const ROUTES: [string, string, Handler][] = [
+  ["GET", "/api/health", async (_r, env) => {
+    const row = await env.DB.prepare("SELECT 1 AS ok").first<{ ok: number }>();
+    return json({ ok: row?.ok === 1 });
+  }],
+  ["POST", "/api/auth/login", requestLogin],
+  ["GET", "/api/auth/verify", verifyLogin],
+  ["POST", "/api/auth/logout", logout],
+  ["GET", "/api/me", me],
+  ["GET", "/api/dev/outbox", async (_r, env) => (await readOutbox(env)) ?? error(404, "Not found")],
+
+  ["GET", "/api/events", listEvents],
+  ["POST", "/api/events", createEvent],
+  ["GET", "/api/events/:id", manageEvent],
+  ["PATCH", "/api/events/:id", updateEvent],
+  ["DELETE", "/api/events/:id", deleteEvent],
+  ["POST", "/api/events/:id/status", setStatus],
+  ["GET", "/api/events/:id/totals", totals],
+  ["POST", "/api/events/:id/categories", addCategory],
+  ["POST", "/api/events/:id/organizers", addOrganizer],
+  ["DELETE", "/api/events/:id/organizers/:email", removeOrganizer],
+  ["PATCH", "/api/categories/:id", renameCategory],
+  ["DELETE", "/api/categories/:id", deleteCategory],
+  ["POST", "/api/categories/:id/entries", addEntry],
+  ["PATCH", "/api/entries/:id", updateEntry],
+  ["DELETE", "/api/entries/:id", deleteEntry],
+
+  ["GET", "/api/public/codes/:code", (_r, env, code) => lookupCode(env, code!)],
+  ["GET", "/api/public/events/:id", publicEvent],
+  ["POST", "/api/public/events/:id/votes", castVote],
+  ["GET", "/api/photos/*", (_r, env, key) => getPhoto(env, key!)],
+];
+
+/** Matches a path against a pattern, returning the captured segments or null. */
+export function matchPath(pattern: string, path: string): string[] | null {
+  const want = pattern.split("/");
+  const got = path.split("/");
+  const params: string[] = [];
+  for (let i = 0; i < want.length; i++) {
+    if (want[i] === "*") {
+      const rest = got.slice(i).join("/");
+      if (!rest) return null;
+      params.push(rest);
+      return params;
+    }
+    if (got[i] === undefined) return null;
+    if (want[i]!.startsWith(":")) {
+      if (!got[i]) return null;
+      params.push(decodeURIComponent(got[i]!));
+    } else if (want[i] !== got[i]) {
+      return null;
+    }
+  }
+  return got.length === want.length ? params : null;
+}
+
+export async function route(request: Request, env: Env): Promise<Response> {
+  const path = new URL(request.url).pathname;
+  let pathMatched = false;
+  for (const [method, pattern, handler] of ROUTES) {
+    const params = matchPath(pattern, path);
+    if (!params) continue;
+    pathMatched = true;
+    if (method === request.method) return handler(request, env, ...params);
+  }
+  return pathMatched ? error(405, "Method not allowed") : error(404, "Not found");
+}
 
 // Only /api/* reaches the Worker (run_worker_first in wrangler.jsonc); every
 // other path is served from public/ by the assets binding.
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-
-    if (url.pathname === "/api/health") {
-      const row = await env.DB.prepare("SELECT 1 AS ok").first<{ ok: number }>();
-      return json({ ok: row?.ok === 1 });
+    if (!new URL(request.url).pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+    try {
+      return await route(request, env);
+    } catch (err) {
+      if (err instanceof HttpError) return error(err.status, err.message);
+      console.error(err);
+      return error(500, "Something went wrong");
     }
-
-    if (url.pathname.startsWith("/api/")) {
-      return error(404, "Not found");
-    }
-
-    return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;
