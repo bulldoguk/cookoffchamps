@@ -326,6 +326,22 @@ details[open] > summary { margin-bottom: 8px; }
 .stepper li[aria-current="step"] { border-top-color: var(--accent); color: var(--accent); }
 
 .controls p:not(.live) { margin-top: 0; }
+.controls .aside { color: var(--muted); margin: 12px 0 0; }
+
+/* "Are you sure?" before closing, revealing or undoing a reveal (SW-23) */
+dialog.confirm {
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-top: 5px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-lift);
+}
+dialog.confirm::backdrop { background: rgb(43 29 20 / 0.45); }
+dialog.confirm h2 { margin-top: 0; }
+dialog.confirm .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; margin-top: 16px; }
 .per-category { padding-left: 1.2rem; }
 .peek { margin-top: 12px; padding: 12px 16px; border-radius: var(--radius-sm); background: var(--accent-soft); }
 .peek ol { margin: 0; padding-left: 1.4rem; }

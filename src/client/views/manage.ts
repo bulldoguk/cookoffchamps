@@ -1,5 +1,6 @@
 import { api } from "../api";
 import type { Ctx } from "../app";
+import { confirmDialog, type ConfirmOptions } from "../dialog";
 import { h, mount, photoUrl } from "../dom";
 import { resizePhoto } from "../photo";
 import type { ManageEntry, ManageView, Totals } from "../types";
@@ -62,21 +63,50 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
     return act(() => api(`/api/events/${eventId}/status`, { method: "POST", body: { status } }));
   }
 
+  /** setStatus, but only after the organizer confirms (SW-23). */
+  async function setStatusIfSure(status: string, ask: ConfirmOptions): Promise<void> {
+    if (await confirmDialog(ask)) await setStatus(status);
+  }
+
+  async function startReveal(): Promise<void> {
+    const sure = await confirmDialog({
+      title: "Reveal the winners?",
+      body: "The reveal shows the winners, 3rd place first. When the champion appears, the results go public on the guests' link.",
+      confirm: "Reveal the winners",
+    });
+    if (sure) ctx.navigate(`/e/${eventId}/reveal`);
+  }
+
+  // Closing and revealing can both be undone for a family event (decision 17),
+  // so neither is a trap; the dialogs stop them happening by accident.
   function statusControls(): HTMLElement {
     const s = data.event.status;
     const box = h("section", { class: "card controls", "aria-label": "Event progress" }, stepper(s));
     if (s === "setup") {
       box.append(h("p", {}, "Add the dishes, print the poster, then open voting."), h("button", { onclick: () => setStatus("open") }, "Open voting"));
     } else if (s === "open") {
-      box.append(h("p", { class: "live" }, "Voting is open."), h("button", { onclick: () => setStatus("closed") }, "Close voting"));
+      const close = () =>
+        setStatusIfSure("closed", { title: "Close voting?", body: "Guests can't vote until you reopen it.", confirm: "Close voting" });
+      box.append(h("p", { class: "live" }, "Voting is open."), h("button", { onclick: close }, "Close voting"));
     } else if (s === "closed") {
       box.append(
         h("p", {}, "Voting is closed. Totals stay hidden from guests until the reveal."),
-        h("a", { class: "button", href: `/e/${eventId}/reveal`, "data-link": true }, "Start the reveal"),
+        h("button", { onclick: () => void startReveal() }, "Start the reveal"),
         h("button", { class: "secondary", onclick: () => setStatus("open") }, "Reopen voting"),
+        h("p", { class: "aside" }, "Closed too soon? Reopen voting: every vote so far is kept."),
       );
     } else {
-      box.append(h("p", {}, "The results are out."), h("a", { class: "button", href: `/v/${eventId}`, "data-link": true }, "See the results page"));
+      const undo = () =>
+        setStatusIfSure("closed", {
+          title: "Undo the reveal?",
+          body: "The results page goes back to \"results coming soon\". If you then reopen voting, the standings people have already seen could change.",
+          confirm: "Undo the reveal",
+        });
+      box.append(
+        h("p", {}, "The results are out."),
+        h("a", { class: "button", href: `/v/${eventId}`, "data-link": true }, "See the results page"),
+        h("button", { class: "secondary", onclick: undo }, "Undo the reveal"),
+      );
     }
     return box;
   }

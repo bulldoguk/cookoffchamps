@@ -70,7 +70,7 @@ describe("events", () => {
     expect(ev).toMatchObject({ name: "Chili Bowl", date: null });
   });
 
-  it("moves through setup → open → closed → (reopen) → revealed, and no further", async () => {
+  it("moves through setup → open → closed → (reopen) → revealed → (undo) → closed", async () => {
     const cookie = await login("status@example.com");
     const { id } = await makeEvent(cookie);
     const go = (status: unknown) => send(`/api/events/${id}/status`, "POST", { status }, cookie);
@@ -82,10 +82,38 @@ describe("events", () => {
     expect((await go("open")).status).toBe(200);
     expect((await go("closed")).status).toBe(200);
     expect((await go("revealed")).status).toBe(200);
-    const stuck = await go("open");
-    expect(stuck.status).toBe(409);
-    expect(await stuck.json()).toEqual({ error: "Can't go from revealed to open" });
+    // An undone reveal goes back to closed, never straight to voting (decision 17).
+    const skip = await go("open");
+    expect(skip.status).toBe(409);
+    expect(await skip.json()).toEqual({ error: "Can't go from revealed to open" });
+    expect((await go("setup")).status).toBe(409);
+    expect(await (await go("closed")).json()).toEqual({ status: "closed" });
+    expect((await go("open")).status).toBe(200);
     expect((await go(42)).status).toBe(409);
+  });
+
+  it("hides the results from guests again when a reveal is undone", async () => {
+    const cookie = await login("undo@example.com");
+    const { id, categoryId } = await makeEvent(cookie);
+    await makeEntry(cookie, categoryId, "Al", "Stew", jpeg());
+    const go = (status: string) => send(`/api/events/${id}/status`, "POST", { status }, cookie);
+    await go("open");
+    await go("closed");
+    await go("revealed");
+    const cook = async () =>
+      (await (await call(`/api/public/events/${id}`)).json<{ categories: { entries: { cookName?: string }[] }[] }>()).categories[0]!.entries[0]!.cookName;
+    expect(await cook()).toBe("Al");
+    await go("closed");
+    expect(await cook()).toBeUndefined();
+  });
+
+  it("lets a co-organizer undo a reveal", async () => {
+    const host = await login("undo-host@example.com");
+    const { id } = await makeEvent(host);
+    await send(`/api/events/${id}/organizers`, "POST", { email: "undo-co@example.com" }, host);
+    const co = await login("undo-co@example.com");
+    for (const status of ["open", "closed", "revealed"]) await send(`/api/events/${id}/status`, "POST", { status }, host);
+    expect((await send(`/api/events/${id}/status`, "POST", { status: "closed" }, co)).status).toBe(200);
   });
 
   it("lets only the creator delete, and removes the photos with the event", async () => {
@@ -101,7 +129,7 @@ describe("events", () => {
     expect((await call(`/api/events/${id}`, { method: "DELETE", cookie: host })).status).toBe(200);
     expect((await call(`/api/events/${id}`, { cookie: host })).status).toBe(404);
     expect(await env.PHOTOS.head(entry.photoKey!)).toBeNull();
-    const left = await env.DB.prepare("SELECT COUNT(*) AS n FROM entries").first<{ n: number }>();
+    const left = await env.DB.prepare("SELECT COUNT(*) AS n FROM entries WHERE category_id = ?").bind(categoryId).first<{ n: number }>();
     expect(left!.n).toBe(0);
   });
 
@@ -185,6 +213,7 @@ describe("categories", () => {
     await send(`/api/events/${id}/status`, "POST", { status: "closed" }, cookie);
     expect((await send(`/api/events/${id}/categories`, "POST", { name: "Three" }, cookie)).status).toBe(409);
     expect((await call(`/api/categories/${second}`, { method: "DELETE", cookie })).status).toBe(409);
+    expect((await send(`/api/categories/${second}`, "PATCH", { name: "Renamed" }, cookie)).status).toBe(409);
   });
 });
 

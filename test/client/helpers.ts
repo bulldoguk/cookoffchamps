@@ -50,6 +50,14 @@ export function byText(root: ParentNode, selector: string, text: string): HTMLEl
   return el;
 }
 
+/** Clicks a button in the open confirm dialog (SW-23), then lets the result settle. */
+export async function answerDialog(button: string): Promise<void> {
+  const dialog = document.querySelector("dialog.confirm");
+  if (!dialog) throw new Error("no confirm dialog is open");
+  byText(dialog, "button", button).click();
+  await flush();
+}
+
 export function submit(form: Element): void {
   form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
 }
