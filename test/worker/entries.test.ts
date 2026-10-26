@@ -29,14 +29,15 @@ describe("entries", () => {
   it("stores the photo in R2 and serves it publicly with a long cache", async () => {
     const cookie = await login("pic@example.com");
     const { id, categoryId } = await makeEvent(cookie);
-    const entry = await makeEntry(cookie, categoryId, "A", "One", jpeg(20));
+    const upload = jpeg(20);
+    const entry = await makeEntry(cookie, categoryId, "A", "One", upload);
     expect(entry.photoKey).toMatch(new RegExp(`^events/${id}/${entry.id}-`));
 
     const photo = await call(`/api/photos/${entry.photoKey}`);
     expect(photo.status).toBe(200);
     expect(photo.headers.get("content-type")).toBe("image/jpeg");
     expect(photo.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
-    expect((await photo.arrayBuffer()).byteLength).toBe(20);
+    expect((await photo.arrayBuffer()).byteLength).toBe(upload.size); // nothing to strip, so unchanged
 
     expect((await call(`/api/photos/events/${id}/missing`)).status).toBe(404);
     expect((await call(`/api/photos/other/thing`)).status).toBe(404);

@@ -1,5 +1,6 @@
 import type { Env } from "./env";
 import { HttpError } from "./http";
+import { stripMetadata } from "./strip";
 
 export const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -32,11 +33,13 @@ export async function checkPhoto(file: File): Promise<string> {
 /**
  * Stores a photo under a new key each time, so a replaced photo gets a new URL
  * and the year-long cache on the old one can never serve stale. `type` is the
- * sniffed type from checkPhoto, not the uploader's claim.
+ * sniffed type from checkPhoto, not the uploader's claim. Location and other
+ * hidden metadata are stripped first (SW-28).
  */
 export async function putPhoto(env: Env, eventId: string, entryId: string, file: File, type: string): Promise<string> {
+  const clean = stripMetadata(new Uint8Array(await file.arrayBuffer()), type);
   const key = `events/${eventId}/${entryId}-${crypto.randomUUID()}`;
-  await env.PHOTOS.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: type } });
+  await env.PHOTOS.put(key, clean, { httpMetadata: { contentType: type } });
   return key;
 }
 
