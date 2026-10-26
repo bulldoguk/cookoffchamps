@@ -17,6 +17,9 @@ jobs:
       - run: npm run typecheck
       # Fails the build below 100% lines, branches, functions or statements.
       - run: npm run coverage
+      # The deploy gate: only allowed file types in public/, and no secrets.
+      - run: npm run build
+      - run: npm run check-publish
 
   e2e:
     runs-on: ubuntu-latest

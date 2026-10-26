@@ -163,3 +163,34 @@ test("the favicon, touch icon and manifest are served and linked", async ({ page
   for (const icon of manifest.icons) expect((await request.get(icon.src)).status(), icon.src).toBe(200);
   expect((await request.get("/favicon-32.png")).status()).toBe(200);
 });
+
+test("the help page is plain HTML, linked from every page, and its filter works", async ({ page, request }) => {
+  // Served as a real file: readable without JavaScript, not the app's shell.
+  const raw = await request.get("/help/");
+  expect(raw.status()).toBe(200);
+  const html = await raw.text();
+  expect(html).toContain("<h3>I revealed the winners by mistake. Can I undo it?</h3>");
+  expect(html).toContain('"@type":"FAQPage"');
+
+  await page.goto("/");
+  await page.getByRole("link", { name: "Help and questions" }).click();
+  await expect(page).toHaveURL(/\/help\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Help and questions" })).toBeVisible();
+
+  await page.getByLabel("Find a question").fill("fingerprint");
+  await expect(page.locator("details.faq:visible")).toHaveCount(1);
+  await expect(page.locator("#one-vote-per-phone")).toHaveAttribute("open", "");
+  await page.getByLabel("Find a question").fill("zzzz");
+  await expect(page.getByText("No questions match that.")).toBeVisible();
+
+  // A link to one answer opens it.
+  await page.goto("/help/#undo-reveal");
+  await expect(page.locator("#undo-reveal")).toHaveAttribute("open", "");
+
+  const robots = await request.get("/robots.txt");
+  expect(robots.headers()["content-type"]).toContain("text/plain");
+  expect(await robots.text()).toContain("Disallow: /v/");
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.headers()["content-type"]).toContain("xml");
+  expect(await sitemap.text()).toContain("<loc>https://cookoffchamps.com/help/</loc>");
+});
