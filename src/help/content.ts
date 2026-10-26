@@ -1,6 +1,7 @@
 // The public Q&A (SW-24), approved by Gary 2026-10-26. Words live here, apart
-// from the page template, so the Spanish version (SW-27) is a translation of this
-// file rather than a second set of pages. Every fact was checked against the code.
+// from the page template; the Spanish version (SW-27) is content-es.ts, a
+// translation with the same sections and question ids, so an answer's #anchor
+// is the same in both. Every fact was checked against the code.
 
 /** A paragraph, or a numbered list. */
 export type Block = string | { steps: string[] };
@@ -19,17 +20,27 @@ export interface Section {
 
 export interface HelpContent {
   lang: string;
+  /** The language's name in itself, for the link from the other version. */
+  langName: string;
+  /** Where the page is published, e.g. "/help/". */
+  path: string;
   title: string;
   description: string;
   intro: string;
   filterLabel: string;
   noMatches: string;
   backToApp: string;
+  /** The app's address in this language: "/?lang=es" opens it in Spanish. */
+  appHref: string;
+  linkLabel: string;
+  partOf: string;
   sections: Section[];
 }
 
 export const en: HelpContent = {
   lang: "en",
+  langName: "English",
+  path: "/help/",
   title: "Help and questions",
   description:
     "How Cookoff Champs works: blind voting by QR code, running a family cookoff, the 3-2-1 reveal, and what we store.",
@@ -37,6 +48,9 @@ export const en: HelpContent = {
   filterLabel: "Find a question",
   noMatches: "No questions match that. Try a shorter word.",
   backToApp: "Go to Cookoff Champs",
+  appHref: "/",
+  linkLabel: "Link to this answer",
+  partOf: "Part of",
   sections: [
     {
       id: "guests",
@@ -85,6 +99,14 @@ export const en: HelpContent = {
           id: "ties",
           q: "What if two dishes tie?",
           a: ["They share the place and are revealed together. A tie for first makes them co-champions. There's no tie-break and no runoff."],
+        },
+        {
+          id: "spanish",
+          q: "Can I use it in Spanish?",
+          a: [
+            "Yes. The app starts in your phone's language, and the English / Español button at the top of each page switches it; your choice is remembered on that phone. An organizer's login and invitation emails come in the language they're using.",
+            "The names people type, like dishes, cooks and categories, appear exactly as they were typed.",
+          ],
         },
       ],
     },

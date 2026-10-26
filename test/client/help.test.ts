@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { en, type HelpContent } from "../../src/help/content";
+import { es } from "../../src/help/content-es";
 import { applyFilter, matches, openTarget, start, words } from "../../src/help/filter";
 import { answerText, escapeHtml, faqJsonLd, helpPage, ORIGIN, robots, sitemap } from "../../src/help/render";
 
@@ -80,6 +81,31 @@ describe("the help page", () => {
     expect(escapeHtml(`&<>"'`)).toBe("&amp;&lt;&gt;&quot;&#39;");
   });
 
+  it("has a Spanish version with the same sections and anchors (SW-27)", () => {
+    const ids = (c: HelpContent) => c.sections.map((s) => [s.id, s.questions.map((q) => [q.id, q.a.length, q.a.map((b) => typeof b)])]);
+    expect(ids(es)).toEqual(ids(en));
+    const doc = new DOMParser().parseFromString(helpPage(es, [en, es]), "text/html");
+    expect(doc.documentElement.lang).toBe("es");
+    expect(doc.title).toBe("Ayuda y preguntas · Cookoff Champs");
+    expect(doc.querySelector('link[rel="canonical"]')!.getAttribute("href")).toBe(`${ORIGIN}/es/ayuda/`);
+    expect(doc.querySelector(".faq-link a")!.textContent).toBe("Enlace a esta respuesta");
+    expect(doc.querySelector(".site-footer")!.textContent).toContain("Parte de");
+    expect(doc.querySelector("main .button")!.getAttribute("href")).toBe("/?lang=es");
+    const other = doc.querySelector<HTMLAnchorElement>("a.lang")!;
+    expect([other.getAttribute("href"), other.lang, other.textContent]).toEqual(["/help/", "en", "English"]);
+    expect(JSON.parse(doc.querySelector('script[type="application/ld+json"]')!.textContent!).inLanguage).toBe("es");
+  });
+
+  it("points search engines at each language, English by default", () => {
+    for (const content of [en, es]) {
+      const doc = new DOMParser().parseFromString(helpPage(content, [en, es]), "text/html");
+      const alt = [...doc.querySelectorAll('link[rel="alternate"]')].map((l) => [l.getAttribute("hreflang"), l.getAttribute("href")]);
+      expect(alt).toEqual([["en", `${ORIGIN}/help/`], ["es", `${ORIGIN}/es/ayuda/`], ["x-default", `${ORIGIN}/help/`]]);
+    }
+    // On its own, a page has no other language to link to.
+    expect(load().querySelector("a.lang")).toBeNull();
+  });
+
   it("flattens answers to text, numbering steps", () => {
     expect(answerText(["One.", { steps: ["a", "b"] }])).toBe("One. 1. a 2. b");
   });
@@ -90,7 +116,8 @@ describe("sitemap and robots", () => {
     const xml = sitemap();
     expect(xml).toContain(`<loc>${ORIGIN}/</loc>`);
     expect(xml).toContain(`<loc>${ORIGIN}/help/</loc>`);
-    expect(xml.match(/<loc>/g)).toHaveLength(2);
+    expect(xml).toContain(`<loc>${ORIGIN}/es/ayuda/</loc>`);
+    expect(xml.match(/<loc>/g)).toHaveLength(3);
   });
 
   it("keeps event, results and organizer pages out of search engines", () => {

@@ -194,3 +194,31 @@ test("the help page is plain HTML, linked from every page, and its filter works"
   expect(sitemap.headers()["content-type"]).toContain("xml");
   expect(await sitemap.text()).toContain("<loc>https://cookoffchamps.com/help/</loc>");
 });
+
+test("the site works in Spanish: a phone set to Spanish, the switch, and the Spanish help page (SW-27)", async ({ browser, request }) => {
+  const context = await browser.newContext({ locale: "es-MX" });
+  const page = await context.newPage();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "¿Vienes a votar?" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "es");
+
+  // The switch says where it goes, in that language, and the choice sticks.
+  await page.getByRole("button", { name: "English" }).click();
+  await expect(page.getByRole("heading", { name: "Here to vote?" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Here to vote?" })).toBeVisible();
+  await page.getByRole("button", { name: "Español" }).click();
+
+  await page.getByRole("link", { name: "Ayuda y preguntas" }).click();
+  await expect(page).toHaveURL(/\/es\/ayuda\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Ayuda y preguntas" })).toBeVisible();
+  await page.getByLabel("Buscar una pregunta").fill("deshacer anuncio");
+  await expect(page.locator("#undo-reveal")).toHaveAttribute("open", "");
+  await page.getByRole("link", { name: "English" }).click();
+  await expect(page).toHaveURL(/\/help\/$/);
+  await context.close();
+
+  const raw = await request.get("/es/ayuda/");
+  expect(raw.status()).toBe(200);
+  expect(await raw.text()).toContain('<html lang="es">');
+});

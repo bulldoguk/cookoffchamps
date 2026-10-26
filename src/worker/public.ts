@@ -42,7 +42,7 @@ export async function lookupCode(request: Request, env: Env, code: string): Prom
       .bind(ipHash, since)
       .first<{ n: number }>();
     if (misses!.n >= MAX_CODE_MISSES) {
-      throw new HttpError(429, "Too many codes tried. Please wait a few minutes, or scan the QR code on the poster.");
+      throw new HttpError(429, "Too many codes tried. Please wait a few minutes, or scan the QR code on the poster.", "tooManyCodes");
     }
   }
   const row = await env.DB.prepare("SELECT id FROM events WHERE code = ?").bind(code.toUpperCase()).first<{ id: string }>();
@@ -50,7 +50,7 @@ export async function lookupCode(request: Request, env: Env, code: string): Prom
     if (ipHash) {
       await env.DB.prepare("INSERT INTO code_misses (ip_hash, at) VALUES (?, ?)").bind(ipHash, new Date().toISOString()).run();
     }
-    throw new HttpError(404, "No event with that code");
+    throw new HttpError(404, "No event with that code", "noSuchCode");
   }
   return json({ id: row.id });
 }
@@ -113,10 +113,10 @@ export async function publicEvent(request: Request, env: Env, eventId: string): 
  */
 export async function castVote(request: Request, env: Env, eventId: string): Promise<Response> {
   const event = await loadEvent(env, eventId);
-  if (event.status !== "open") throw new HttpError(409, "Voting isn't open");
+  if (event.status !== "open") throw new HttpError(409, "Voting isn't open", "votingNotOpen");
   const body = await readJson(request);
   if (typeof body.categoryId !== "string" || typeof body.entryId !== "string") {
-    throw new HttpError(400, "That entry isn't in this category");
+    throw new HttpError(400, "That entry isn't in this category", "wrongCategory");
   }
 
   const entry = await env.DB.prepare(
@@ -125,10 +125,10 @@ export async function castVote(request: Request, env: Env, eventId: string): Pro
   )
     .bind(body.entryId, body.categoryId, eventId)
     .first();
-  if (!entry) throw new HttpError(400, "That entry isn't in this category");
+  if (!entry) throw new HttpError(400, "That entry isn't in this category", "wrongCategory");
 
   if (!(await verifyTurnstile(env, body.turnstileToken, request.headers.get("cf-connecting-ip")))) {
-    throw new HttpError(403, "Couldn't confirm you're a person. Please try again.");
+    throw new HttpError(403, "Couldn't confirm you're a person. Please try again.", "notAPerson");
   }
 
   const existing = readCookie(request, DEVICE_COOKIE);

@@ -123,7 +123,7 @@ async function respond(request: Request, env: Env, url: URL, isApi: boolean): Pr
   try {
     return await route(request, env);
   } catch (err) {
-    if (err instanceof HttpError) return error(err.status, err.message);
+    if (err instanceof HttpError) return error(err.status, err.message, err.code);
     console.error(err);
     return error(500, "Something went wrong");
   }

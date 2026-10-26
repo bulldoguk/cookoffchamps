@@ -45,7 +45,7 @@ describe("home, logged out", () => {
     fill(ctx.root, "email", "gary@example.com");
     submit(ctx.root.querySelectorAll("form")[1]!);
     await flush();
-    expect(calls.at(-1)).toEqual({ method: "POST", path: "/api/auth/login", body: { email: "gary@example.com" } });
+    expect(calls.at(-1)).toEqual({ method: "POST", path: "/api/auth/login", body: { email: "gary@example.com", lang: "en" } });
     expect(ctx.root.querySelector(".status")!.textContent).toContain("Check gary@example.com");
   });
 

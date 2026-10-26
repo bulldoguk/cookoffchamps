@@ -90,7 +90,7 @@ describe("voting", () => {
     await send(`/api/events/${id}/status`, "POST", { status: "closed" }, host);
     const res = await vote(id, categoryId, a.id);
     expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ error: "Voting isn't open" });
+    expect(await res.json()).toEqual({ error: "Voting isn't open", code: "votingNotOpen" });
   });
 
   it("refuses an entry from another category or event", async () => {

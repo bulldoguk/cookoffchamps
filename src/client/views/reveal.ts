@@ -1,7 +1,8 @@
 import { revealSequence, type RevealStep } from "../../shared/ranking";
 import { api } from "../api";
 import type { Ctx } from "../app";
-import { dateEl, h, logo, mount, ordinal, photoUrl } from "../dom";
+import { dateEl, h, logo, mount, photoUrl } from "../dom";
+import { m } from "../i18n";
 import type { ManageView, Totals } from "../types";
 
 interface Slide {
@@ -18,9 +19,9 @@ export function buildSlides(data: ManageView, totals: Totals["totals"]): Slide[]
 }
 
 export function placeLabel(step: RevealStep): string {
-  if (step.coChampions) return "Co-champions!";
-  if (step.place === 1) return "Champion!";
-  return `${ordinal(step.place)} place${step.entryIds.length > 1 ? " (tied)" : ""}`;
+  if (step.coChampions) return m().common.coChampions;
+  if (step.place === 1) return m().reveal.champion;
+  return m().common.place(step.place, step.entryIds.length > 1);
 }
 
 const CONFETTI_COLOURS = ["var(--gold)", "var(--accent)", "var(--good)", "var(--silver)", "var(--bronze)", "var(--confetti-extra)"];
@@ -50,10 +51,11 @@ export function confetti(count = 72): HTMLElement {
 /** /e/:id/reveal, for a phone or a TV. Click, tap, space or → for the next place. */
 export async function revealView(ctx: Ctx, eventId: string): Promise<() => void> {
   const data = await api<ManageView>(`/api/events/${eventId}`);
-  const back = h("p", { class: "reveal-back" }, h("a", { href: `/e/${eventId}`, "data-link": true }, "← Back to the event"));
+  const t = m();
+  const back = h("p", { class: "reveal-back" }, h("a", { href: `/e/${eventId}`, "data-link": true }, t.reveal.back));
 
   if (data.event.status !== "closed" && data.event.status !== "revealed") {
-    mount(ctx.root, back, h("h1", {}, "Not yet"), h("p", {}, "Close voting first, then come back to reveal the winners."));
+    mount(ctx.root, back, h("h1", {}, t.reveal.notYet), h("p", {}, t.reveal.closeFirst));
     return () => {};
   }
 
@@ -70,7 +72,7 @@ export async function revealView(ctx: Ctx, eventId: string): Promise<() => void>
         logo(),
         h("h1", {}, data.event.name),
         data.event.date ? dateEl(data.event.date, "event-date") : null,
-        h("p", { class: "hint" }, slides.length ? "Tap for 3rd place" : "There are no dishes to reveal."),
+        h("p", { class: "hint" }, slides.length ? t.reveal.tapFirst : t.reveal.nothing),
       );
       return;
     }
@@ -93,12 +95,12 @@ export async function revealView(ctx: Ctx, eventId: string): Promise<() => void>
           e.photoKey ? h("img", { src: photoUrl(e.photoKey), alt: e.dishName }) : null,
           h("p", { class: "dish-name" }, e.dishName),
           // The cook's name is seen here for the first time (decision 9).
-          h("p", { class: "cook-label" }, "Cooked by"),
+          h("p", { class: "cook-label" }, t.reveal.cookedBy),
           h("p", { class: "cook" }, e.cookName),
-          h("p", { class: "votes" }, `${step.votes} vote${step.votes === 1 ? "" : "s"}`),
+          h("p", { class: "votes" }, t.common.votes(step.votes)),
         );
       })),
-      shown < slides.length - 1 ? h("p", { class: "hint" }, "Tap for the next place") : h("p", { class: "hint" }, "🎉 Congratulations to every cook!"),
+      h("p", { class: "hint" }, shown < slides.length - 1 ? t.reveal.tapNext : t.reveal.congrats),
     );
   }
 

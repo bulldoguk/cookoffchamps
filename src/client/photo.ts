@@ -1,6 +1,8 @@
 // Photos are shrunk on the phone before upload (decision 10): a phone camera's
 // 12 MP original is several MB, which is slow on venue wifi and wasteful in R2.
 
+import { m } from "./i18n";
+
 export const MAX_EDGE = 1600;
 
 /** Scales (w, h) down so the long edge is at most `max`, keeping the aspect ratio. */
@@ -29,6 +31,6 @@ export async function resizePhoto(file: Blob, deps: PhotoDeps = defaultDeps): Pr
   canvas.getContext("2d")!.drawImage(image, 0, 0, size.width, size.height);
   image.close?.();
   return new Promise((resolve, reject) =>
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not process that photo"))), "image/jpeg", 0.82),
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error(m().manage.photoFailed))), "image/jpeg", 0.82),
   );
 }

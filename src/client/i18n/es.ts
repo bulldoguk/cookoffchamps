@@ -1,0 +1,212 @@
+import type { ErrorCode } from "../../shared/errors";
+import type { Messages } from "./en";
+
+// Spanish (SW-27), for Texas and Mexican Spanish: "tú", "platillo", "concurso".
+// ⚠️ Drafted by Claude 2026-10-26 and not yet checked by a native speaker; when
+// someone reviews it, this file and src/help/content-es.ts are all they need.
+// Where the organizer's gender is unknown, the wording avoids it ("quien
+// organiza", "el equipo organizador").
+
+const PLACES = ["", "Primer", "Segundo", "Tercer", "Cuarto", "Quinto"];
+
+export function lugar(n: number): string {
+  return PLACES[n] ? `${PLACES[n]} lugar` : `${n}.º lugar`;
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+export const es: Messages = {
+  name: "Español",
+  locale: "es-MX",
+
+  app: {
+    notFound: "No encontramos esta página",
+    goHome: "Ir a la página principal",
+    oops: "Uy.",
+    home: "Inicio",
+    loginFirst: "Primero inicia sesión.",
+    notYours: "Ese concurso es de otra persona.",
+    noEvent: "No encontramos ese concurso.",
+    offline: "Algo salió mal. Revisa tu conexión e inténtalo de nuevo.",
+    generic: "Algo salió mal. Inténtalo de nuevo.",
+    helpLink: "Ayuda y preguntas",
+    helpHref: "/es/ayuda/",
+    partOf: "Parte de",
+  },
+
+  common: {
+    cancel: "Cancelar",
+    save: "Guardar",
+    entry: (n) => `Platillo ${n}`,
+    by: (cook) => `de ${cook}`,
+    votes: (n) => plural(n, "voto", "votos"),
+    place: (n, tied) => `${lugar(n)}${tied ? " (empate)" : ""}`,
+    coChampions: "¡Empate en primer lugar!",
+    noDishes: "Todavía no hay platillos.",
+    nameLabel: "Nombre ",
+    dateLabel: "Fecha ",
+    cookLabel: "Quién lo cocinó ",
+    dishLabel: "Platillo ",
+  },
+
+  status: {
+    setup: "En preparación",
+    open: "Votación abierta",
+    closed: "Votación cerrada",
+    revealed: "Resultados publicados",
+  },
+
+  home: {
+    tagline: "Cata a ciegas, votos honestos y ganadores anunciados del 3.º al 1.º.",
+    hereToVote: "¿Vienes a votar?",
+    typeCode: "Escribe el código del cartel ",
+    codePlaceholder: "p. ej. K7QM2X",
+    go: "Ir",
+    runningCookoff: "¿Vas a organizar un concurso?",
+    loginIntro: "Entra con tu correo. Te mandamos un enlace, así que no necesitas contraseña.",
+    linkExpired: "Ese enlace ya venció o ya se usó. Pide uno nuevo.",
+    emailLabel: "Correo ",
+    emailMeLink: "Mándame un enlace",
+    sending: "Enviando…",
+    checkEmail: (email) => `Revisa ${email}: ahí está tu enlace para entrar. Funciona una sola vez y vence en 15 minutos.`,
+    sendFailed: "No se pudo enviar el enlace. Inténtalo de nuevo.",
+    newCookoff: "Nuevo concurso",
+    namePlaceholder: "Concurso de chili de la familia Bailey",
+    create: "Crear",
+    loggedInAs: (email) => `Sesión iniciada como ${email} `,
+    logout: "Cerrar sesión",
+    yourCookoffs: "Tus concursos",
+    coOrganizer: "coorganizador",
+    noneYet: "Todavía no tienes ninguno. Crea uno arriba.",
+    noSuchCode: "Ese código no existe",
+    noSuchCodeBody: (code) => `No encontramos ningún concurso con el código ${code}. Revisa el cartel e inténtalo de nuevo.`,
+  },
+
+  vote: {
+    notOpenYet: "La votación todavía no abre. Echa un vistazo a los platillos y regresa cuando quien organiza la abra.",
+    tapFavourite: "Toca tu platillo favorito. Puedes cambiar de opinión hasta que cierre la votación.",
+    closedSoon: "La votación está cerrada. ¡Pronto vienen los resultados!",
+    voting: "Votando…",
+    saved: "Voto guardado. ¡Gracias!",
+    hasClosed: "La votación ya cerró.",
+    yourVote: "✓ Tu voto",
+    entryAria: (n, dish) => `Platillo ${n}, ${dish}`,
+    loadFailed: "No se pudo cargar la verificación del voto. Revisa tu conexión e inténtalo de nuevo.",
+    checkFailed: "Falló la verificación del voto. Inténtalo de nuevo.",
+  },
+
+  manage: {
+    back: "← Tus concursos",
+    steps: { setup: "Preparación", open: "Votación", closed: "Cerrada", revealed: "Resultados" },
+    progress: "Avance del concurso",
+    setupHint: "Agrega los platillos, imprime el cartel y luego abre la votación.",
+    openVoting: "Abrir la votación",
+    isOpen: "La votación está abierta.",
+    closeVoting: "Cerrar la votación",
+    closeTitle: "¿Cerrar la votación?",
+    closeBody: "Nadie podrá votar hasta que la vuelvas a abrir.",
+    closedHint: "La votación está cerrada. Los invitados no ven los totales hasta el anuncio de ganadores.",
+    startReveal: "Anunciar a los ganadores",
+    revealTitle: "¿Anunciar a los ganadores?",
+    revealBody:
+      "El anuncio muestra a los ganadores, empezando por el tercer lugar. Cuando aparece el primer lugar, los resultados se publican en el enlace de los invitados.",
+    revealConfirm: "Anunciar a los ganadores",
+    reopen: "Reabrir la votación",
+    reopenAside: "¿La cerraste muy pronto? Reábrela: se conservan todos los votos.",
+    resultsOut: "Los resultados ya se publicaron.",
+    seeResults: "Ver la página de resultados",
+    undo: "Deshacer el anuncio",
+    undoTitle: "¿Deshacer el anuncio?",
+    undoBody:
+      "La página de resultados vuelve a decir que pronto vienen los resultados. Si después reabres la votación, las posiciones que la gente ya vio podrían cambiar.",
+    votesCast: "Votos emitidos",
+    peek: "Echar un vistazo a las posiciones",
+    hidePeek: "Ocultar las posiciones",
+    peekRow: (n, dish, cook, votes) => `Platillo ${n}, ${dish} (${cook}): ${votes}`,
+    noPhoto: "Sin foto",
+    edit: "Editar",
+    delete: "Borrar",
+    deleteEntry: (n, dish) => `¿Borrar el platillo ${n}, ${dish}?`,
+    newPhoto: "Foto nueva ",
+    photo: "Foto ",
+    adding: "Agregando…",
+    addDish: "Agregar un platillo",
+    add: "Agregar",
+    dishes: "Platillos",
+    renameCategory: "Cambiar el nombre de la categoría",
+    rename: "Cambiar nombre",
+    deleteCategory: "Borrar categoría",
+    deleteCategoryConfirm: (name) => `¿Borrar la categoría ${name} y sus platillos?`,
+    nameCategory: "Nombre de la nueva categoría",
+    nameFirstCategory: "Nombre de la nueva categoría (tus platillos actuales quedan en la primera)",
+    categoryExample: "Postres",
+    addCategory: "Agregar otra categoría",
+    splitCategories: "Dividir en categorías (p. ej. Chili y Postres)",
+    organizers: "Equipo organizador",
+    createdIt: " (lo creó)",
+    remove: "Quitar",
+    inviteLabel: "Invita a alguien a organizar, por correo ",
+    invite: "Invitar",
+    shareAndPrint: "Compartir e imprimir",
+    votingPage: "Página para votar: ",
+    typedCode: "Código: ",
+    printPoster: "Imprimir el cartel",
+    printCards: "Imprimir las tarjetas de mesa",
+    editDetails: "Cambiar el nombre o la fecha",
+    deleteEvent: "Borrar este concurso",
+    deleteEventConfirm: (name) => `¿Borrar ${name} para siempre, con todas sus fotos y votos?`,
+    photoFailed: "No se pudo procesar esa foto",
+  },
+
+  reveal: {
+    back: "← Volver al concurso",
+    notYet: "Todavía no",
+    closeFirst: "Primero cierra la votación y luego regresa para anunciar a los ganadores.",
+    tapFirst: "Toca para ver el tercer lugar",
+    nothing: "No hay platillos que anunciar.",
+    champion: "¡Primer lugar!",
+    cookedBy: "Lo cocinó",
+    tapNext: "Toca para ver el siguiente lugar",
+    congrats: "🎉 ¡Felicidades a todos los que cocinaron!",
+  },
+
+  print: {
+    back: "← Volver",
+    print: "Imprimir",
+    letter: "Tamaño carta",
+    voteFavourite: "¡Vota por tu platillo favorito!",
+    scanOrGo: "Escanea con la cámara de tu teléfono, o entra a",
+    enterCode: "y escribe el código ",
+    scanToVote: "Escanea para votar",
+    addDishesFirst: "Primero agrega algunos platillos.",
+  },
+};
+
+/** The server's errors, by code. In English the server's own message is shown. */
+export const esErrors: Record<ErrorCode, string> = {
+  tooManyLinks: "Se mandaron demasiados enlaces. Espera un rato e inténtalo de nuevo.",
+  loginRequired: "Primero inicia sesión.",
+  emailFailed: "No se pudo enviar el correo. Inténtalo de nuevo.",
+  eventNotFound: "No encontramos ese concurso.",
+  notOrganizer: "No eres parte del equipo organizador de este concurso.",
+  creatorOnly: "Solo quien creó el concurso puede hacer eso.",
+  entriesFrozen: "La votación ya cerró, así que los platillos ya no se pueden cambiar.",
+  categoryNotFound: "No encontramos esa categoría.",
+  entryNotFound: "No encontramos ese platillo.",
+  badStatusChange: "Ese paso no se puede hacer ahora. Recarga la página.",
+  lastCategory: "Un concurso necesita al menos una categoría.",
+  alreadyOrganizer: "Esa persona ya es parte del equipo organizador.",
+  noSuchOrganizer: "Esa persona no está en el equipo organizador.",
+  required: "Llena todos los campos.",
+  tooLong: "Ese texto es demasiado largo.",
+  badDate: "Revisa la fecha.",
+  badEmail: "Escribe un correo válido.",
+  photoType: "Las fotos tienen que ser JPEG, PNG o WebP.",
+  photoTooLarge: "Esa foto es demasiado grande.",
+  photoUnreadable: "No pudimos leer esa foto. Toma otra.",
+  tooManyCodes: "Se probaron demasiados códigos. Espera unos minutos o escanea el código QR del cartel.",
+  noSuchCode: "No hay ningún concurso con ese código.",
+  votingNotOpen: "La votación no está abierta.",
+  wrongCategory: "Ese platillo no está en esta categoría.",
+  notAPerson: "No pudimos confirmar que eres una persona. Inténtalo de nuevo.",
+};

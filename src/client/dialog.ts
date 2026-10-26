@@ -1,4 +1,5 @@
 import { h } from "./dom";
+import { m } from "./i18n";
 
 export interface ConfirmOptions {
   title: string;
@@ -14,7 +15,7 @@ export interface ConfirmOptions {
  */
 export function confirmDialog({ title, body, confirm }: ConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {
-    const cancelButton = h("button", { type: "button", class: "secondary" }, "Cancel");
+    const cancelButton = h("button", { type: "button", class: "secondary" }, m().common.cancel);
     const confirmButton = h("button", { type: "button" }, confirm);
     const dialog = h(
       "dialog",

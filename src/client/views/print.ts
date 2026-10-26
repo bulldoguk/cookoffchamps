@@ -1,6 +1,7 @@
 import { api } from "../api";
 import type { Ctx } from "../app";
 import { h, logo, mount } from "../dom";
+import { m } from "../i18n";
 import { renderQr } from "../qr";
 import type { ManageView } from "../types";
 
@@ -12,13 +13,14 @@ export async function printView(ctx: Ctx, eventId: string, kind: string): Promis
   const data = await api<ManageView>(`/api/events/${eventId}`);
   const origin = ctx.url.origin;
   const voteUrl = `${origin}/v/${eventId}`;
+  const t = m().print;
   const toolbar = h(
     "div",
     { class: "toolbar no-print" },
-    h("a", { href: `/e/${eventId}`, "data-link": true }, "← Back"),
+    h("a", { href: `/e/${eventId}`, "data-link": true }, t.back),
     " ",
-    h("button", { onclick: () => window.print() }, "Print"),
-    h("span", { class: "muted" }, "Sized for US Letter paper"),
+    h("button", { onclick: () => window.print() }, t.print),
+    h("span", { class: "muted" }, t.letter),
   );
 
   if (kind === "poster") {
@@ -31,11 +33,11 @@ export async function printView(ctx: Ctx, eventId: string, kind: string): Promis
         { class: "page poster" },
         logo("poster-logo"),
         h("h1", {}, data.event.name),
-        h("p", { class: "lead" }, "Vote for your favourite dish!"),
+        h("p", { class: "lead" }, t.voteFavourite),
         qr,
-        h("p", {}, "Scan with your phone's camera, or go to"),
+        h("p", {}, t.scanOrGo),
         h("p", { class: "url" }, `${ctx.url.host}/c/${data.event.code}`),
-        h("p", {}, "and enter the code ", h("strong", { class: "code" }, data.event.code)),
+        h("p", {}, t.enterCode, h("strong", { class: "code" }, data.event.code)),
       ),
     );
     await renderQr(qr, voteUrl);
@@ -52,17 +54,17 @@ export async function printView(ctx: Ctx, eventId: string, kind: string): Promis
       "div",
       { class: "tent-card" },
       multi ? h("p", { class: "category" }, category.name) : null,
-      h("p", { class: "number" }, `Entry ${e.number}`),
+      h("p", { class: "number" }, m().common.entry(e.number)),
       h("p", { class: "dish-name" }, e.dishName),
       qr,
-      h("p", { class: "muted" }, "Scan to vote"),
+      h("p", { class: "muted" }, t.scanToVote),
     );
     return { card, qr, url: `${voteUrl}?entry=${e.id}` };
   });
   mount(
     ctx.root,
     toolbar,
-    cards.length ? h("div", { class: "page cards" }, ...cards.map((c) => c.card)) : h("p", {}, "Add some dishes first."),
+    cards.length ? h("div", { class: "page cards" }, ...cards.map((c) => c.card)) : h("p", {}, t.addDishesFirst),
   );
   await Promise.all(cards.map((c) => renderQr(c.qr, c.url)));
 }
