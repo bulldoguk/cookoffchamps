@@ -141,6 +141,18 @@ describe("email delivery", () => {
     expect(await readOutbox({ ...env, EMAIL_MODE: "resend" })).toBeNull();
   });
 
+  it("writes the login email in Spanish when the app asks in Spanish (SW-27)", async () => {
+    await send("/api/auth/login", "POST", { email: "es@example.com", lang: "es" });
+    await send("/api/auth/login", "POST", { email: "other@example.com", lang: "fr" }); // anything else is English
+    const rows = await env.DB.prepare("SELECT to_addr, subject, body FROM dev_outbox WHERE to_addr IN (?, ?)")
+      .bind("es@example.com", "other@example.com")
+      .all<{ to_addr: string; subject: string; body: string }>();
+    const by = Object.fromEntries(rows.results.map((r) => [r.to_addr, r]));
+    expect(by["es@example.com"]!.subject).toBe("Tu enlace para entrar a Cookoff Champs");
+    expect(by["es@example.com"]!.body).toMatch(/^Aquí está tu enlace[\s\S]*\/api\/auth\/verify\?token=[\s\S]*Si no lo pediste, ignora este correo\.$/);
+    expect(by["other@example.com"]!.subject).toBe("Your Cookoff Champs login link");
+  });
+
   it("hides the dev outbox route when it's off", async () => {
     const { default: worker } = await import("../../src/worker/index");
     const res = await worker.fetch(new Request("https://cookoffchamps.com/api/dev/outbox"), {

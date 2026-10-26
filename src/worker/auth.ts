@@ -6,6 +6,7 @@ import { cookie, readCookie } from "./cookies";
 import { sendEmail } from "./email";
 import type { Env } from "./env";
 import { HttpError, json, readJson, requireEmail } from "./http";
+import { langOf, loginEmail, type LoginEmailText } from "./i18n";
 import { newId } from "./ids";
 
 // __Host- makes the browser insist on Secure, Path=/ and no Domain, so neither a
@@ -52,7 +53,7 @@ async function checkLinkQuota(env: Env, email: string, ipHash: string | null): P
     .bind(email, since, ipHash, since)
     .first<{ byEmail: number; byIp: number }>();
   if (row!.byEmail >= MAX_LINKS_PER_EMAIL_PER_HOUR || row!.byIp >= MAX_LINKS_PER_IP_PER_HOUR) {
-    throw new HttpError(429, "Too many login links have been sent. Please wait a while and try again.");
+    throw new HttpError(429, "Too many login links have been sent. Please wait a while and try again.", "tooManyLinks");
   }
 }
 
@@ -71,8 +72,7 @@ export async function sendLoginLink(
   request: Request,
   email: string,
   next: string,
-  subject = "Your Cookoff Champs login link",
-  intro = "Here's your link to log in to Cookoff Champs.",
+  text: LoginEmailText,
 ): Promise<void> {
   const ip = clientIp(request);
   const ipHash = ip ? await sha256(ip) : null;
@@ -85,19 +85,19 @@ export async function sendLoginLink(
   const link = `${env.APP_ORIGIN}/api/auth/verify?token=${token}&next=${encodeURIComponent(safeNext(next))}`;
   await sendEmail(env, {
     to: email,
-    subject,
-    text: `${intro}\n\n${link}\n\nThe link works once and expires in 15 minutes. If you didn't ask for it, ignore this email.`,
+    subject: text.subject,
+    text: `${text.intro}\n\n${link}\n\n${text.footer}`,
   });
 }
 
 /**
- * POST /api/auth/login {email, next?}. 200 for any valid address, so it can't be
+ * POST /api/auth/login {email, next?, lang?}. 200 for any valid address, so it can't be
  * used to probe for accounts (anyone can log in; there are no accounts to find).
  */
 export async function requestLogin(request: Request, env: Env): Promise<Response> {
   const body = await readJson(request);
   const email = requireEmail(body.email);
-  await sendLoginLink(env, request, email, safeNext(typeof body.next === "string" ? body.next : null));
+  await sendLoginLink(env, request, email, safeNext(typeof body.next === "string" ? body.next : null), loginEmail(langOf(body.lang)));
   return json({ ok: true });
 }
 
@@ -146,7 +146,7 @@ export async function sessionEmail(request: Request, env: Env): Promise<string |
 
 export async function requireSession(request: Request, env: Env): Promise<string> {
   const email = await sessionEmail(request, env);
-  if (!email) throw new HttpError(401, "Please log in");
+  if (!email) throw new HttpError(401, "Please log in", "loginRequired");
   return email;
 }
 

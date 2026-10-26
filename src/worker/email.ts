@@ -35,7 +35,7 @@ export async function sendEmail(env: Env, email: Email): Promise<void> {
   });
   if (!res.ok) {
     console.error("email send failed", res.status, await res.text());
-    throw new HttpError(502, "Could not send email");
+    throw new HttpError(502, "Could not send email", "emailFailed");
   }
 }
 

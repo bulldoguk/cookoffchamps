@@ -16,7 +16,7 @@ export function stripMetadata(bytes: Uint8Array, type: string): Uint8Array {
   return stripWebp(bytes);
 }
 
-const unreadable = () => new HttpError(415, "We couldn't read that photo. Try taking it again.");
+const unreadable = () => new HttpError(415, "We couldn't read that photo. Try taking it again.", "photoUnreadable");
 
 function concat(parts: Uint8Array[]): Uint8Array {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));

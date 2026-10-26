@@ -85,7 +85,7 @@ describe("events", () => {
     // An undone reveal goes back to closed, never straight to voting (decision 17).
     const skip = await go("open");
     expect(skip.status).toBe(409);
-    expect(await skip.json()).toEqual({ error: "Can't go from revealed to open" });
+    expect(await skip.json()).toEqual({ error: "Can't go from revealed to open", code: "badStatusChange" });
     expect((await go("setup")).status).toBe(409);
     expect(await (await go("closed")).json()).toEqual({ status: "closed" });
     expect((await go("open")).status).toBe(200);
@@ -229,6 +229,7 @@ describe("co-organizers", () => {
       .first<{ subject: string; body: string }>();
     expect(invite!.subject).toBe("You're helping run Family Cookoff");
     expect(invite!.body).toContain("lead@example.com has made you a co-organizer");
+    expect(invite!.body).toContain("expires in 15 minutes");
     expect(new URL(await latestLink("kiana@example.com")).searchParams.get("next")).toBe(`/e/${id}`);
 
     const kiana = await login("kiana@example.com");
@@ -239,6 +240,18 @@ describe("co-organizers", () => {
 
     // A co-organizer can't invite or remove anyone.
     expect((await send(`/api/events/${id}/organizers`, "POST", { email: "x@example.com" }, kiana)).status).toBe(403);
+  });
+
+  it("are invited in the inviter's language (SW-27)", async () => {
+    const host = await login("anfitrion@example.com");
+    const { id } = await makeEvent(host, "Concurso Familiar");
+    expect((await send(`/api/events/${id}/organizers`, "POST", { email: "tia@example.com", lang: "es" }, host)).status).toBe(201);
+    const invite = await env.DB.prepare("SELECT subject, body FROM dev_outbox WHERE to_addr = ? ORDER BY id DESC")
+      .bind("tia@example.com")
+      .first<{ subject: string; body: string }>();
+    expect(invite!.subject).toBe("Te invitaron a organizar Concurso Familiar");
+    expect(invite!.body).toContain("anfitrion@example.com te agregó al equipo organizador de \"Concurso Familiar\"");
+    expect(invite!.body).toContain("vence en 15 minutos");
   });
 
   it("refuses duplicates and bad addresses", async () => {

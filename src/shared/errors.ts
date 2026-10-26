@@ -1,0 +1,33 @@
+// Codes for the errors a person can actually see (SW-27). The server sends the
+// code beside its English message, so the app can show the message in the
+// reader's language. Errors only a developer would hit (bad JSON, unknown routes)
+// have no code and fall back to a general message.
+export const ERROR_CODES = [
+  "tooManyLinks",
+  "loginRequired",
+  "emailFailed",
+  "eventNotFound",
+  "notOrganizer",
+  "creatorOnly",
+  "entriesFrozen",
+  "categoryNotFound",
+  "entryNotFound",
+  "badStatusChange",
+  "lastCategory",
+  "alreadyOrganizer",
+  "noSuchOrganizer",
+  "required",
+  "tooLong",
+  "badDate",
+  "badEmail",
+  "photoType",
+  "photoTooLarge",
+  "photoUnreadable",
+  "tooManyCodes",
+  "noSuchCode",
+  "votingNotOpen",
+  "wrongCategory",
+  "notAPerson",
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];

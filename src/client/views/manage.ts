@@ -2,6 +2,7 @@ import { api } from "../api";
 import type { Ctx } from "../app";
 import { confirmDialog, type ConfirmOptions } from "../dialog";
 import { h, mount, photoUrl } from "../dom";
+import { errorText, lang, m } from "../i18n";
 import { resizePhoto } from "../photo";
 import type { ManageEntry, ManageView, Totals } from "../types";
 
@@ -17,21 +18,17 @@ export async function entryForm(fields: { cookName?: string; dishName?: string; 
   return form;
 }
 
-const STEPS: [string, string][] = [
-  ["setup", "Set up"],
-  ["open", "Voting"],
-  ["closed", "Closed"],
-  ["revealed", "Results"],
-];
+const STEPS = ["setup", "open", "closed", "revealed"];
 
 /** Where the event is in its life: set up → voting → closed → results. */
 export function stepper(status: string): HTMLElement {
-  const at = STEPS.findIndex(([s]) => s === status);
+  const at = STEPS.indexOf(status);
+  const labels = m().manage.steps;
   return h(
     "ol",
     { class: "stepper" },
-    ...STEPS.map(([, label], i) =>
-      h("li", { class: i < at ? "done" : undefined, "aria-current": i === at ? "step" : undefined }, label),
+    ...STEPS.map((step, i) =>
+      h("li", { class: i < at ? "done" : undefined, "aria-current": i === at ? "step" : undefined }, labels[step]),
     ),
   );
 }
@@ -42,6 +39,9 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
   let pollTimer: ReturnType<typeof setInterval> | undefined;
   let peekTimer: ReturnType<typeof setTimeout> | undefined;
   const notice = h("p", { class: "status", role: "status" });
+  // Read once per view: a language switch redraws the whole view.
+  const t = m().manage;
+  const common = m().common;
 
   async function reload(): Promise<void> {
     data = await api<ManageView>(`/api/events/${eventId}`);
@@ -55,7 +55,7 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
       notice.textContent = "";
       await reload();
     } catch (err) {
-      notice.textContent = (err as Error).message;
+      notice.textContent = errorText(err);
     }
   }
 
@@ -69,11 +69,7 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
   }
 
   async function startReveal(): Promise<void> {
-    const sure = await confirmDialog({
-      title: "Reveal the winners?",
-      body: "The reveal shows the winners, 3rd place first. When the champion appears, the results go public on the guests' link.",
-      confirm: "Reveal the winners",
-    });
+    const sure = await confirmDialog({ title: t.revealTitle, body: t.revealBody, confirm: t.revealConfirm });
     if (sure) ctx.navigate(`/e/${eventId}/reveal`);
   }
 
@@ -81,31 +77,25 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
   // so neither is a trap; the dialogs stop them happening by accident.
   function statusControls(): HTMLElement {
     const s = data.event.status;
-    const box = h("section", { class: "card controls", "aria-label": "Event progress" }, stepper(s));
+    const box = h("section", { class: "card controls", "aria-label": t.progress }, stepper(s));
     if (s === "setup") {
-      box.append(h("p", {}, "Add the dishes, print the poster, then open voting."), h("button", { onclick: () => setStatus("open") }, "Open voting"));
+      box.append(h("p", {}, t.setupHint), h("button", { onclick: () => setStatus("open") }, t.openVoting));
     } else if (s === "open") {
-      const close = () =>
-        setStatusIfSure("closed", { title: "Close voting?", body: "Guests can't vote until you reopen it.", confirm: "Close voting" });
-      box.append(h("p", { class: "live" }, "Voting is open."), h("button", { onclick: close }, "Close voting"));
+      const close = () => setStatusIfSure("closed", { title: t.closeTitle, body: t.closeBody, confirm: t.closeVoting });
+      box.append(h("p", { class: "live" }, t.isOpen), h("button", { onclick: close }, t.closeVoting));
     } else if (s === "closed") {
       box.append(
-        h("p", {}, "Voting is closed. Totals stay hidden from guests until the reveal."),
-        h("button", { onclick: () => void startReveal() }, "Start the reveal"),
-        h("button", { class: "secondary", onclick: () => setStatus("open") }, "Reopen voting"),
-        h("p", { class: "aside" }, "Closed too soon? Reopen voting: every vote so far is kept."),
+        h("p", {}, t.closedHint),
+        h("button", { onclick: () => void startReveal() }, t.startReveal),
+        h("button", { class: "secondary", onclick: () => setStatus("open") }, t.reopen),
+        h("p", { class: "aside" }, t.reopenAside),
       );
     } else {
-      const undo = () =>
-        setStatusIfSure("closed", {
-          title: "Undo the reveal?",
-          body: "The results page goes back to \"results coming soon\". If you then reopen voting, the standings people have already seen could change.",
-          confirm: "Undo the reveal",
-        });
+      const undo = () => setStatusIfSure("closed", { title: t.undoTitle, body: t.undoBody, confirm: t.undo });
       box.append(
-        h("p", {}, "The results are out."),
-        h("a", { class: "button", href: `/v/${eventId}`, "data-link": true }, "See the results page"),
-        h("button", { class: "secondary", onclick: undo }, "Undo the reveal"),
+        h("p", {}, t.resultsOut),
+        h("a", { class: "button", href: `/v/${eventId}`, "data-link": true }, t.seeResults),
+        h("button", { class: "secondary", onclick: undo }, t.undo),
       );
     }
     return box;
@@ -126,7 +116,7 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
 
   function votesCast(): HTMLElement {
     drawCounts();
-    return h("section", { class: "card" }, h("h2", {}, "Votes cast"), countEl, perCategory, peekSection());
+    return h("section", { class: "card" }, h("h2", {}, t.votesCast), countEl, perCategory, peekSection());
   }
 
   /**
@@ -143,11 +133,11 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
   function peekSection(): HTMLElement {
     // Behind a deliberate tap, and it hides itself again (decision 15).
     const panel = h("div", { class: "peek", hidden: true });
-    const button = h("button", { class: "secondary" }, "Peek at the standings") as HTMLButtonElement;
+    const button = h("button", { class: "secondary" }, t.peek) as HTMLButtonElement;
     button.addEventListener("click", async () => {
       if (!panel.hidden) {
         panel.hidden = true;
-        button.textContent = "Peek at the standings";
+        button.textContent = t.peek;
         return;
       }
       const { totals } = await api<Totals>(`/api/events/${eventId}/totals`);
@@ -158,19 +148,19 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
             "div",
             {},
             data.categories.length > 1 ? h("h3", {}, c.name) : null,
-            h("ol", {}, ...rows.map((t) => {
-              const entry = data.entries.find((e) => e.id === t.entryId)!;
-              return h("li", {}, `Entry ${entry.number}, ${entry.dishName} (${entry.cookName}): ${t.votes}`);
+            h("ol", {}, ...rows.map((row) => {
+              const entry = data.entries.find((e) => e.id === row.entryId)!;
+              return h("li", {}, t.peekRow(entry.number, entry.dishName, entry.cookName, row.votes));
             })),
           );
         }),
       );
       panel.hidden = false;
-      button.textContent = "Hide the standings";
+      button.textContent = t.hidePeek;
       clearTimeout(peekTimer);
       peekTimer = setTimeout(() => {
         panel.hidden = true;
-        button.textContent = "Peek at the standings";
+        button.textContent = t.peek;
       }, PEEK_MS);
     });
     return h("div", {}, button, panel);
@@ -180,18 +170,18 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
     const li = h(
       "li",
       { class: "entry" },
-      entry.photoKey ? h("img", { src: photoUrl(entry.photoKey), alt: "", class: "thumb" }) : h("span", { class: "thumb none" }, "No photo"),
-      h("span", {}, h("strong", {}, `Entry ${entry.number}`), ` ${entry.dishName} `, h("span", { class: "muted" }, `by ${entry.cookName}`)),
+      entry.photoKey ? h("img", { src: photoUrl(entry.photoKey), alt: "", class: "thumb" }) : h("span", { class: "thumb none" }, t.noPhoto),
+      h("span", {}, h("strong", {}, common.entry(entry.number)), ` ${entry.dishName} `, h("span", { class: "muted" }, common.by(entry.cookName))),
     );
     if (editable) {
       li.append(
-        h("button", { class: "link", onclick: () => li.replaceWith(editEntryForm(entry)) }, "Edit"),
+        h("button", { class: "link", onclick: () => li.replaceWith(editEntryForm(entry)) }, t.edit),
         h("button", {
           class: "link danger",
           onclick: () => {
-            if (confirm(`Delete entry ${entry.number}, ${entry.dishName}?`)) void act(() => api(`/api/entries/${entry.id}`, { method: "DELETE" }));
+            if (confirm(t.deleteEntry(entry.number, entry.dishName))) void act(() => api(`/api/entries/${entry.id}`, { method: "DELETE" }));
           },
-        }, "Delete"),
+        }, t.delete),
       );
     }
     return li;
@@ -215,11 +205,11 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
           );
         },
       },
-      h("label", {}, "Cook ", cook),
-      h("label", {}, "Dish ", dish),
-      h("label", {}, "New photo ", photo),
-      h("button", { type: "submit" }, "Save"),
-      h("button", { type: "button", class: "link", onclick: () => draw() }, "Cancel"),
+      h("label", {}, common.cookLabel, cook),
+      h("label", {}, common.dishLabel, dish),
+      h("label", {}, t.newPhoto, photo),
+      h("button", { type: "submit" }, common.save),
+      h("button", { type: "button", class: "link", onclick: () => draw() }, common.cancel),
     );
   }
 
@@ -234,7 +224,7 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
         class: "entry-form",
         onsubmit: (e: Event) => {
           e.preventDefault();
-          notice.textContent = "Adding…";
+          notice.textContent = t.adding;
           void act(async () =>
             api(`/api/categories/${categoryId}/entries`, {
               method: "POST",
@@ -243,11 +233,11 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
           );
         },
       },
-      h("h3", {}, "Add a dish"),
-      h("label", {}, "Cook ", cook),
-      h("label", {}, "Dish ", dish),
-      h("label", {}, "Photo ", photo),
-      h("button", { type: "submit" }, "Add"),
+      h("h3", {}, t.addDish),
+      h("label", {}, common.cookLabel, cook),
+      h("label", {}, common.dishLabel, dish),
+      h("label", {}, t.photo, photo),
+      h("button", { type: "submit" }, t.add),
     );
   }
 
@@ -255,7 +245,7 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
     const editable = data.event.status === "setup" || data.event.status === "open";
     // A single contest shows no category headings at all (decision 12).
     const multi = data.categories.length > 1;
-    const section = h("section", { class: "card" }, h("h2", {}, "Dishes"));
+    const section = h("section", { class: "card" }, h("h2", {}, t.dishes));
     for (const c of data.categories) {
       const entries = data.entries.filter((e) => e.categoryId === c.id);
       const block = h("div", { class: "category" });
@@ -267,20 +257,20 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
                 h("button", {
                   class: "link",
                   onclick: () => {
-                    const name = prompt("Rename category", c.name);
+                    const name = prompt(t.renameCategory, c.name);
                     if (name) void act(() => api(`/api/categories/${c.id}`, { method: "PATCH", body: { name } }));
                   },
-                }, "Rename"),
+                }, t.rename),
                 h("button", {
                   class: "link danger",
                   onclick: () => {
-                    if (confirm(`Delete the ${c.name} category and its dishes?`)) void act(() => api(`/api/categories/${c.id}`, { method: "DELETE" }));
+                    if (confirm(t.deleteCategoryConfirm(c.name))) void act(() => api(`/api/categories/${c.id}`, { method: "DELETE" }));
                   },
-                }, "Delete category")),
+                }, t.deleteCategory)),
           );
         }
       }
-      block.append(entries.length ? h("ul", { class: "entries" }, ...entries.map((e) => entryRow(e, editable))) : h("p", { class: "muted" }, "No dishes yet."));
+      block.append(entries.length ? h("ul", { class: "entries" }, ...entries.map((e) => entryRow(e, editable))) : h("p", { class: "muted" }, common.noDishes));
       if (editable) block.append(addEntryForm(c.id));
       section.append(block);
     }
@@ -289,10 +279,10 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
         h("button", {
           class: "link",
           onclick: () => {
-            const name = prompt(multi ? "Name the new category" : "Name the new category (your current dishes become the first one)", "Dessert");
+            const name = prompt(multi ? t.nameCategory : t.nameFirstCategory, t.categoryExample);
             if (name) void act(() => api(`/api/events/${eventId}/categories`, { method: "POST", body: { name } }));
           },
-        }, multi ? "Add another category" : "Split into categories (e.g. Chili and Dessert)"),
+        }, multi ? t.addCategory : t.splitCategories),
       );
     }
     return section;
@@ -304,20 +294,21 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
     return h(
       "section",
       { class: "card" },
-      h("h2", {}, "Organizers"),
+      h("h2", {}, t.organizers),
       h("ul", {}, ...data.organizers.map((o) =>
-        h("li", {}, o.email, o.role === "creator" ? h("span", { class: "muted" }, " (created it)") : null,
+        h("li", {}, o.email, o.role === "creator" ? h("span", { class: "muted" }, t.createdIt) : null,
           isCreator && o.role === "co"
-            ? h("button", { class: "link danger", onclick: () => act(() => api(`/api/events/${eventId}/organizers/${encodeURIComponent(o.email)}`, { method: "DELETE" })) }, "Remove")
+            ? h("button", { class: "link danger", onclick: () => act(() => api(`/api/events/${eventId}/organizers/${encodeURIComponent(o.email)}`, { method: "DELETE" })) }, t.remove)
             : null),
       )),
       isCreator
         ? h("form", {
             onsubmit: (e: Event) => {
               e.preventDefault();
-              void act(() => api(`/api/events/${eventId}/organizers`, { method: "POST", body: { email: email.value } }));
+              // The invite email is written in the inviter's language (SW-27).
+              void act(() => api(`/api/events/${eventId}/organizers`, { method: "POST", body: { email: email.value, lang: lang() } }));
             },
-          }, h("label", {}, "Invite a co-organizer by email ", email), h("button", { type: "submit" }, "Invite"))
+          }, h("label", {}, t.inviteLabel, email), h("button", { type: "submit" }, t.invite))
         : null,
     );
   }
@@ -328,29 +319,29 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
     return h(
       "section",
       { class: "card" },
-      h("h2", {}, "Share and print"),
-      h("p", {}, "Voting page: ", h("a", { href: `/v/${eventId}`, "data-link": true }, `${location.origin}/v/${eventId}`)),
-      h("p", {}, "Typed code: ", h("strong", { class: "code" }, data.event.code)),
+      h("h2", {}, t.shareAndPrint),
+      h("p", {}, t.votingPage, h("a", { href: `/v/${eventId}`, "data-link": true }, `${location.origin}/v/${eventId}`)),
+      h("p", {}, t.typedCode, h("strong", { class: "code" }, data.event.code)),
       h("p", {},
-        h("a", { class: "button secondary", href: `/e/${eventId}/print/poster`, "data-link": true }, "Print the poster"), " ",
-        h("a", { class: "button secondary", href: `/e/${eventId}/print/cards`, "data-link": true }, "Print the table cards")),
+        h("a", { class: "button secondary", href: `/e/${eventId}/print/poster`, "data-link": true }, t.printPoster), " ",
+        h("a", { class: "button secondary", href: `/e/${eventId}/print/cards`, "data-link": true }, t.printCards)),
       h("details", {},
-        h("summary", {}, "Edit name or date"),
+        h("summary", {}, t.editDetails),
         h("form", {
           onsubmit: (e: Event) => {
             e.preventDefault();
             void act(() => api(`/api/events/${eventId}`, { method: "PATCH", body: { name: name.value, date: date.value } }));
           },
-        }, h("label", {}, "Name ", name), h("label", {}, "Date ", date), h("button", { type: "submit" }, "Save"))),
+        }, h("label", {}, common.nameLabel, name), h("label", {}, common.dateLabel, date), h("button", { type: "submit" }, common.save))),
       data.role === "creator"
         ? h("button", {
             class: "link danger",
             onclick: () => {
-              if (confirm(`Delete ${data.event.name} for good, with all its photos and votes?`)) {
+              if (confirm(t.deleteEventConfirm(data.event.name))) {
                 void api(`/api/events/${eventId}`, { method: "DELETE" }).then(() => ctx.navigate("/"));
               }
             },
-          }, "Delete this event")
+          }, t.deleteEvent)
         : null,
     );
   }
@@ -359,7 +350,7 @@ export async function manageView(ctx: Ctx, eventId: string): Promise<() => void>
     clearTimeout(peekTimer);
     mount(
       ctx.root,
-      h("p", {}, h("a", { href: "/", "data-link": true }, "← Your cookoffs")),
+      h("p", {}, h("a", { href: "/", "data-link": true }, t.back)),
       h("h1", {}, data.event.name),
       notice,
       statusControls(),

@@ -360,7 +360,7 @@ describe("organizers (decision 16)", () => {
     fill(invite, "email", "shannon@example.com");
     submit(invite);
     await flush();
-    expect(calls.find((c) => c.path === "/api/events/e1/organizers" && c.method === "POST")!.body).toEqual({ email: "shannon@example.com" });
+    expect(calls.find((c) => c.path === "/api/events/e1/organizers" && c.method === "POST")!.body).toEqual({ email: "shannon@example.com", lang: "en" });
   });
 
   it("hides creator-only controls from a co-organizer", async () => {

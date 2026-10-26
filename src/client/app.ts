@@ -1,5 +1,6 @@
 import { ApiError } from "./api";
 import { h, mount } from "./dom";
+import { detectLang, errorText, langName, m, otherLang, setLang } from "./i18n";
 import { codeView, homeView } from "./views/home";
 import { manageView } from "./views/manage";
 import { printView } from "./views/print";
@@ -33,32 +34,64 @@ export function findRoute(path: string): { view: View; params: string[] } | null
 }
 
 export function errorMessage(err: unknown): string {
+  const t = m().app;
   if (err instanceof ApiError) {
-    if (err.status === 401) return "Please log in first.";
-    if (err.status === 403) return "That event belongs to someone else.";
-    if (err.status === 404) return "We couldn't find that event.";
-    return err.message;
+    if (err.status === 401) return t.loginFirst;
+    if (err.status === 403) return t.notYours;
+    if (err.status === 404) return t.noEvent;
+    return errorText(err);
   }
-  return "Something went wrong. Check your connection and try again.";
+  return t.offline;
+}
+
+/**
+ * The parts of the page outside the app's own area: the language switch in the
+ * masthead and the help link in the footer. index.html has them in English for
+ * a first paint; this puts them in the current language.
+ */
+export function drawChrome(doc: Document, onSwitch: () => void): void {
+  const t = m().app;
+  const other = otherLang();
+  const help = doc.getElementById("help-link");
+  if (help) {
+    help.textContent = t.helpLink;
+    help.setAttribute("href", t.helpHref);
+  }
+  const partOf = doc.getElementById("part-of");
+  if (partOf) partOf.textContent = t.partOf;
+  const box = doc.getElementById("lang-switch");
+  if (box) {
+    // Named in its own language, so someone who can't read the current one can still find theirs.
+    const button = h("button", { type: "button", class: "link lang", lang: other, onclick: () => {
+      setLang(other);
+      onSwitch();
+    } }, langName(other));
+    box.replaceChildren(button);
+  }
 }
 
 export function start(root: HTMLElement, win: Window = window): { go: (path: string) => Promise<void> } {
   let cleanup: void | (() => void);
+  const first = new URL(win.location.href);
+  // A ?lang= link (from the help pages) is a choice, so it's remembered; the phone's language isn't.
+  setLang(detectLang(first, win.navigator.language), first.searchParams.has("lang"));
 
   async function render(): Promise<void> {
     cleanup?.();
     cleanup = undefined;
     const url = new URL(win.location.href);
+    drawChrome(root.ownerDocument, () => void render());
     const found = findRoute(url.pathname);
     const ctx: Ctx = { root, url, navigate: (p) => void go(p) };
+    const t = m().app;
     if (!found) {
-      mount(root, h("h1", {}, "Page not found"), h("p", {}, h("a", { href: "/", "data-link": true }, "Go to the home page")));
+      mount(root, h("h1", {}, t.notFound), h("p", {}, h("a", { href: "/", "data-link": true }, t.goHome)));
       return;
     }
     try {
       cleanup = await found.view(ctx, ...found.params);
     } catch (err) {
-      mount(root, h("h1", {}, "Hmm."), h("p", { class: "error" }, errorMessage(err)), h("p", {}, h("a", { href: "/", "data-link": true }, "Home")));
+      mount(root, h("h1", {}, t.oops), h("p", { class: "error" }, errorMessage(err)), h("p", {}, h("a", { href: "/", "data-link": true }, t.home)));
     }
   }
 

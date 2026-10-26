@@ -1,5 +1,6 @@
 // Writes the public help pages (SW-24) into public/ at build time:
-//   public/help/index.html, public/help/filter.js, public/sitemap.xml, public/robots.txt
+//   public/help/index.html (English), public/es/ayuda/index.html (Spanish, SW-27),
+//   public/help/filter.js, public/sitemap.xml, public/robots.txt
 // The words come from src/help/content.ts and the HTML from src/help/render.ts;
 // esbuild bundles them so plain Node can run them. Run by `npm run build`.
 import { build } from "esbuild";
@@ -13,7 +14,7 @@ const tmp = path.join(root, ".wrangler", "help-build.mjs");
 
 await build({
   stdin: {
-    contents: `export { helpPage, sitemap, robots } from "./src/help/render.ts"; export { en } from "./src/help/content.ts";`,
+    contents: `export { helpPage, sitemap, robots } from "./src/help/render.ts"; export { en } from "./src/help/content.ts"; export { es } from "./src/help/content-es.ts";`,
     resolveDir: root,
     loader: "ts",
   },
@@ -23,10 +24,14 @@ await build({
   outfile: tmp,
   logLevel: "warning",
 });
-const { helpPage, sitemap, robots, en } = await import(`${pathToFileURL(tmp).href}?t=${Date.now()}`);
+const { helpPage, sitemap, robots, en, es } = await import(`${pathToFileURL(tmp).href}?t=${Date.now()}`);
 
-fs.mkdirSync(path.join(pub, "help"), { recursive: true });
-fs.writeFileSync(path.join(pub, "help", "index.html"), helpPage(en));
+const versions = [en, es]; // English first: it's the x-default for search engines
+for (const content of versions) {
+  const dir = path.join(pub, ...content.path.split("/").filter(Boolean));
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "index.html"), helpPage(content, versions));
+}
 fs.writeFileSync(path.join(pub, "sitemap.xml"), sitemap());
 fs.writeFileSync(path.join(pub, "robots.txt"), robots());
 

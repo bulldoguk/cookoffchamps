@@ -1,6 +1,7 @@
 import { api, ApiError } from "../api";
 import type { Ctx } from "../app";
-import { dateEl, h, mount, ordinal, photoUrl } from "../dom";
+import { dateEl, h, mount, photoUrl } from "../dom";
+import { errorText, m } from "../i18n";
 import { getTurnstileToken } from "../turnstile";
 import type { PublicEntry, PublicView } from "../types";
 
@@ -9,7 +10,7 @@ function dishCard(entry: PublicEntry, extra: Node[]): HTMLElement {
     "div",
     { class: "dish", "data-entry": entry.id },
     entry.photoKey ? h("img", { src: photoUrl(entry.photoKey), alt: entry.dishName, loading: "lazy" }) : h("div", { class: "no-photo" }, "🍲"),
-    h("p", { class: "number" }, `Entry ${entry.number}`),
+    h("p", { class: "number" }, m().common.entry(entry.number)),
     h("p", { class: "dish-name" }, entry.dishName),
     ...extra,
   );
@@ -17,6 +18,7 @@ function dishCard(entry: PublicEntry, extra: Node[]): HTMLElement {
 
 /** Results, once revealed (decision 13): placings with cooks, counts and photos. */
 function results(view: PublicView): Node[] {
+  const t = m().common;
   const multi = view.categories.length > 1;
   return view.categories.map((c) =>
     h(
@@ -27,10 +29,10 @@ function results(view: PublicView): Node[] {
         h(
           "li",
           { "data-place": p.place },
-          h("p", { class: "place" }, p.place === 1 && p.entryIds.length > 1 ? "Co-champions!" : `${ordinal(p.place)} place${p.entryIds.length > 1 ? " (tied)" : ""}`),
+          h("p", { class: "place" }, p.place === 1 && p.entryIds.length > 1 ? t.coChampions : t.place(p.place, p.entryIds.length > 1)),
           ...p.entryIds.map((id) => {
             const e = c.entries.find((x) => x.id === id)!;
-            return dishCard(e, [h("p", { class: "cook" }, `by ${e.cookName}`), h("p", { class: "votes" }, `${e.votes} vote${e.votes === 1 ? "" : "s"}`)]);
+            return dishCard(e, [h("p", { class: "cook" }, t.by(e.cookName!)), h("p", { class: "votes" }, t.votes(e.votes!))]);
           }),
         ),
       )),
@@ -53,32 +55,28 @@ export async function voteView(ctx: Ctx, eventId: string): Promise<void> {
     return;
   }
 
+  const t = m();
   const open = event.status === "open";
-  const intro =
-    event.status === "setup"
-      ? "Voting hasn't opened yet. Have a look at the dishes, and come back when the organizer opens it."
-      : open
-        ? "Tap your favourite dish. You can change your mind until voting closes."
-        : "Voting is closed. The results are coming soon!";
+  const intro = event.status === "setup" ? t.vote.notOpenYet : open ? t.vote.tapFavourite : t.vote.closedSoon;
 
   async function castVote(categoryId: string, entryId: string, card: HTMLElement): Promise<void> {
     // Instant feedback on the card that was tapped, before the round trip.
     card.classList.add("pending");
     card.setAttribute("aria-busy", "true");
-    notice.textContent = "Voting…";
+    notice.textContent = t.vote.voting;
     try {
       const token = await getTurnstileToken(view.turnstileSiteKey, turnstileBox);
       await api(`/api/public/events/${eventId}/votes`, { method: "POST", body: { categoryId, entryId, turnstileToken: token } });
       view.myVotes[categoryId] = entryId;
-      notice.textContent = "Vote saved. Thanks!";
+      notice.textContent = t.vote.saved;
       draw();
     } catch (err) {
       card.classList.remove("pending");
       card.removeAttribute("aria-busy");
       if (err instanceof ApiError && err.status === 409) {
-        notice.textContent = "Voting has closed.";
+        notice.textContent = t.vote.hasClosed;
       } else {
-        notice.textContent = (err as Error).message;
+        notice.textContent = errorText(err);
       }
     }
   }
@@ -95,17 +93,17 @@ export async function voteView(ctx: Ctx, eventId: string): Promise<void> {
           "section",
           {},
           multi ? h("h2", {}, c.name) : null,
-          c.entries.length ? null : h("p", { class: "muted" }, "No dishes yet."),
+          c.entries.length ? null : h("p", { class: "muted" }, t.common.noDishes),
           h("div", { class: "dishes" }, ...c.entries.map((e) => {
             const mine = view.myVotes[c.id] === e.id;
-            const card = dishCard(e, mine ? [h("p", { class: "your-vote" }, "✓ Your vote")] : []);
+            const card = dishCard(e, mine ? [h("p", { class: "your-vote" }, t.vote.yourVote)] : []);
             if (mine) card.classList.add("chosen");
             if (e.id === highlight) card.classList.add("highlight");
             if (open) {
               card.setAttribute("role", "button");
               card.setAttribute("tabindex", "0");
               card.setAttribute("aria-pressed", String(mine));
-              card.setAttribute("aria-label", `Entry ${e.number}, ${e.dishName}`);
+              card.setAttribute("aria-label", t.vote.entryAria(e.number, e.dishName));
               card.addEventListener("click", () => void castVote(c.id, e.id, card));
               // A div with role=button needs the keys a real button gets for free.
               card.addEventListener("keydown", (ev) => {

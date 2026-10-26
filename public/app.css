@@ -160,7 +160,16 @@ a:hover { color: var(--accent-hover); }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 
 /* Masthead on inner pages; the home page has its own hero, and the reveal is a stage. */
-.masthead { width: 100%; max-width: 760px; margin: 0 auto; padding: 12px 16px 0; }
+.masthead {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .brand {
   display: inline-flex;
   align-items: center;
@@ -174,7 +183,9 @@ a:hover { color: var(--accent-hover); }
 }
 .brand:hover { color: var(--accent); }
 .brand img { width: 34px; height: 34px; }
-body:has(.hero) .masthead,
+/* The home hero has the brand already, but keeps the language switch. */
+body:has(.hero) .masthead { justify-content: flex-end; }
+body:has(.hero) .brand { display: none; }
 body:has(.reveal) .masthead,
 body:has(.reveal) .site-footer { display: none; }
 
@@ -278,6 +289,9 @@ button.link {
   box-shadow: none;
 }
 button.link:hover { background: var(--accent-soft); color: var(--accent); }
+/* The English / Español switch (SW-27), and its twin on the help pages. */
+button.link.lang, a.lang { margin-left: auto; font-size: 0.95rem; }
+a.lang { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 10px; color: var(--accent); font-weight: 600; }
 button.danger, .danger { color: var(--bad); }
 button.danger:hover { color: var(--bad); }
 

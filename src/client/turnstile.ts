@@ -2,6 +2,8 @@
 // without asking a real guest to do anything (spec stack). Tokens are single-use,
 // so every vote asks for a fresh one.
 
+import { m } from "./i18n";
+
 interface TurnstileApi {
   render(container: HTMLElement, options: Record<string, unknown>): string;
   execute(widgetId: string): void;
@@ -26,7 +28,7 @@ export function loadTurnstile(): Promise<TurnstileApi> {
     script.onload = () => resolve(window.turnstile!);
     script.onerror = () => {
       loading = null;
-      reject(new Error("Couldn't load the vote check. Check your connection and try again."));
+      reject(new Error(m().vote.loadFailed));
     };
     document.head.append(script);
   });
@@ -46,7 +48,7 @@ export async function getTurnstileToken(siteKey: string, container: HTMLElement)
       },
       "error-callback": () => {
         turnstile.remove(id);
-        reject(new Error("The vote check failed. Please try again."));
+        reject(new Error(m().vote.checkFailed));
       },
     });
     turnstile.execute(id);

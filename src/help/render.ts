@@ -5,7 +5,6 @@ import type { Block, HelpContent, Question } from "./content";
 // Everything that comes from content.ts is escaped.
 
 export const ORIGIN = "https://cookoffchamps.com";
-export const HELP_PATH = "/help/";
 
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -38,17 +37,30 @@ export function faqJsonLd(content: HelpContent): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
-function question(q: Question): string {
+function question(q: Question, linkLabel: string): string {
   // data-text is what the filter searches: the question and its answer.
   return `<details class="faq card" id="${escapeHtml(q.id)}" data-text="${escapeHtml(`${q.q} ${answerText(q.a)}`.toLowerCase())}">
 <summary><h3>${escapeHtml(q.q)}</h3></summary>
 ${q.a.map(block).join("\n")}
-<p class="faq-link"><a href="#${escapeHtml(q.id)}">Link to this answer</a></p>
+<p class="faq-link"><a href="#${escapeHtml(q.id)}">${escapeHtml(linkLabel)}</a></p>
 </details>`;
 }
 
-export function helpPage(content: HelpContent): string {
-  const url = `${ORIGIN}${HELP_PATH}`;
+/**
+ * One language's help page. `versions` is every language's content (this one
+ * included): each gets an hreflang alternate, so search engines send people to
+ * their own language, and the others get a link in the masthead.
+ */
+export function helpPage(content: HelpContent, versions: HelpContent[] = [content]): string {
+  const url = `${ORIGIN}${content.path}`;
+  const alternates = versions
+    .map((v) => `    <link rel="alternate" hreflang="${escapeHtml(v.lang)}" href="${ORIGIN}${escapeHtml(v.path)}" />`)
+    .concat(`    <link rel="alternate" hreflang="x-default" href="${ORIGIN}${escapeHtml(versions[0]!.path)}" />`)
+    .join("\n");
+  const switches = versions
+    .filter((v) => v.lang !== content.lang)
+    .map((v) => `<a class="lang" href="${escapeHtml(v.path)}" lang="${escapeHtml(v.lang)}" hreflang="${escapeHtml(v.lang)}">${escapeHtml(v.langName)}</a>`)
+    .join(" ");
   return `<!doctype html>
 <html lang="${escapeHtml(content.lang)}">
   <head>
@@ -56,11 +68,12 @@ export function helpPage(content: HelpContent): string {
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>${escapeHtml(content.title)} · Cookoff Champs</title>
     <meta name="description" content="${escapeHtml(content.description)}" />
-    <link rel="canonical" href="${url}" />
+    <link rel="canonical" href="${escapeHtml(url)}" />
+${alternates}
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(content.title)} · Cookoff Champs" />
     <meta property="og:description" content="${escapeHtml(content.description)}" />
-    <meta property="og:url" content="${url}" />
+    <meta property="og:url" content="${escapeHtml(url)}" />
     <meta name="theme-color" content="#fffaf3" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1a1310" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -72,7 +85,8 @@ export function helpPage(content: HelpContent): string {
   </head>
   <body class="help">
     <header class="masthead">
-      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="34" height="34" />Cookoff Champs</a>
+      <a class="brand" href="${escapeHtml(content.appHref)}"><img src="/favicon.svg" alt="" width="34" height="34" />Cookoff Champs</a>
+      ${switches}
     </header>
     <main>
       <h1>${escapeHtml(content.title)}</h1>
@@ -86,14 +100,14 @@ ${content.sections
   .map(
     (s) => `      <section class="faq-section" id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-title">
         <h2 id="${escapeHtml(s.id)}-title">${escapeHtml(s.title)}</h2>
-${s.questions.map(question).join("\n")}
+${s.questions.map((q) => question(q, content.linkLabel)).join("\n")}
       </section>`,
   )
   .join("\n")}
-      <p><a class="button" href="/">${escapeHtml(content.backToApp)}</a></p>
+      <p><a class="button" href="${escapeHtml(content.appHref)}">${escapeHtml(content.backToApp)}</a></p>
     </main>
     <footer class="site-footer">
-      Part of <a href="https://hostedinthebarn.com">Hosted in the Barn</a>
+      ${escapeHtml(content.partOf)} <a href="https://hostedinthebarn.com">Hosted in the Barn</a>
     </footer>
   </body>
 </html>
@@ -101,7 +115,7 @@ ${s.questions.map(question).join("\n")}
 }
 
 /** The pages search engines should know about. Event pages are private, so never listed. */
-export const PUBLIC_PATHS = ["/", HELP_PATH];
+export const PUBLIC_PATHS = ["/", "/help/", "/es/ayuda/"];
 
 export function sitemap(): string {
   return `<?xml version="1.0" encoding="UTF-8"?>

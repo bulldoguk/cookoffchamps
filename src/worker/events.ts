@@ -2,6 +2,7 @@ import { categoryEvent, requireCreator, requireEditable, requireOrganizer, type 
 import { requireSession, sendLoginLink } from "./auth";
 import type { Env } from "./env";
 import { HttpError, json, optionalDate, readJson, requireEmail, requireText } from "./http";
+import { langOf, loginEmail } from "./i18n";
 import { newCode, newId } from "./ids";
 import { deletePhotoPrefix } from "./photos";
 
@@ -123,7 +124,7 @@ export async function setStatus(request: Request, env: Env, eventId: string): Pr
   const body = await readJson(request);
   const next = body.status as Status;
   if (!TRANSITIONS[event.status].includes(next)) {
-    throw new HttpError(409, `Can't go from ${event.status} to ${String(body.status)}`);
+    throw new HttpError(409, `Can't go from ${event.status} to ${String(body.status)}`, "badStatusChange");
   }
   await env.DB.prepare("UPDATE events SET status = ? WHERE id = ?").bind(next, eventId).run();
   return json({ status: next });
@@ -193,7 +194,7 @@ export async function deleteCategory(request: Request, env: Env, categoryId: str
   const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM categories WHERE event_id = ?")
     .bind(event.id)
     .first<{ n: number }>();
-  if (count!.n <= 1) throw new HttpError(409, "An event needs at least one category");
+  if (count!.n <= 1) throw new HttpError(409, "An event needs at least one category", "lastCategory");
   const { results } = await env.DB.prepare("SELECT photo_key FROM entries WHERE category_id = ? AND photo_key IS NOT NULL")
     .bind(categoryId)
     .all<{ photo_key: string }>();
@@ -204,15 +205,16 @@ export async function deleteCategory(request: Request, env: Env, categoryId: str
 
 // --- Co-organizers (decision 16) ---------------------------------------------
 
-/** POST /api/events/:id/organizers {email} — creator only; emails them a login link. */
+/** POST /api/events/:id/organizers {email, lang?} — creator only; emails them a login link. */
 export async function addOrganizer(request: Request, env: Env, eventId: string): Promise<Response> {
   const email = await requireSession(request, env);
   const event = await requireCreator(env, eventId, email);
-  const invitee = requireEmail((await readJson(request)).email);
+  const body = await readJson(request);
+  const invitee = requireEmail(body.email);
   const existing = await env.DB.prepare("SELECT 1 FROM organizers WHERE event_id = ? AND email = ?")
     .bind(eventId, invitee)
     .first();
-  if (existing) throw new HttpError(409, "They're already an organizer");
+  if (existing) throw new HttpError(409, "They're already an organizer", "alreadyOrganizer");
   // The email goes first: invites share the login-link rate limits, and a
   // refused send shouldn't leave behind an organizer who was never told.
   await sendLoginLink(
@@ -220,8 +222,7 @@ export async function addOrganizer(request: Request, env: Env, eventId: string):
     request,
     invitee,
     `/e/${eventId}`,
-    `You're helping run ${event.name}`,
-    `${email} has made you a co-organizer of "${event.name}" on Cookoff Champs. This link logs you in and opens the event.`,
+    loginEmail(langOf(body.lang), { by: email, eventName: event.name }),
   );
   await env.DB.prepare("INSERT INTO organizers (event_id, email, role) VALUES (?, ?, 'co')").bind(eventId, invitee).run();
   return json({ ok: true }, 201);
@@ -234,6 +235,6 @@ export async function removeOrganizer(request: Request, env: Env, eventId: strin
   const result = await env.DB.prepare("DELETE FROM organizers WHERE event_id = ? AND email = ? AND role = 'co'")
     .bind(eventId, target.toLowerCase())
     .run();
-  if (result.meta.changes === 0) throw new HttpError(404, "No such co-organizer");
+  if (result.meta.changes === 0) throw new HttpError(404, "No such co-organizer", "noSuchOrganizer");
   return json({ ok: true });
 }

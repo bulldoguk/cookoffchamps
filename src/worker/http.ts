@@ -1,3 +1,5 @@
+import type { ErrorCode } from "../shared/errors";
+
 export function json(body: unknown, status = 200, headers: HeadersInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -5,8 +7,9 @@ export function json(body: unknown, status = 200, headers: HeadersInit = {}): Re
   });
 }
 
-export function error(status: number, message: string): Response {
-  return json({ error: message }, status);
+/** An error response. `code` lets the app say it in the reader's language (SW-27). */
+export function error(status: number, message: string, code?: ErrorCode): Response {
+  return json(code ? { error: message, code } : { error: message }, status);
 }
 
 /** Thrown by handlers to end a request with an error response. */
@@ -14,6 +17,7 @@ export class HttpError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly code?: ErrorCode,
   ) {
     super(message);
   }
@@ -36,10 +40,10 @@ export async function readJson(request: Request): Promise<Record<string, unknown
 /** A required, trimmed, non-empty string of at most `max` characters. */
 export function requireText(value: unknown, field: string, max = 120): string {
   if (typeof value !== "string" || value.trim() === "") {
-    throw new HttpError(400, `${field} is required`);
+    throw new HttpError(400, `${field} is required`, "required");
   }
   const text = value.trim();
-  if (text.length > max) throw new HttpError(400, `${field} is too long`);
+  if (text.length > max) throw new HttpError(400, `${field} is too long`, "tooLong");
   return text;
 }
 
@@ -47,7 +51,7 @@ export function requireText(value: unknown, field: string, max = 120): string {
 export function optionalDate(value: unknown): string | null {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new HttpError(400, "date must be YYYY-MM-DD");
+    throw new HttpError(400, "date must be YYYY-MM-DD", "badDate");
   }
   return value;
 }
@@ -56,7 +60,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function requireEmail(value: unknown): string {
   if (typeof value !== "string" || !EMAIL_RE.test(value.trim()) || value.length > 254) {
-    throw new HttpError(400, "A valid email address is required");
+    throw new HttpError(400, "A valid email address is required", "badEmail");
   }
   return value.trim().toLowerCase();
 }

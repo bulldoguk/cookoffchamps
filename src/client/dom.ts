@@ -1,3 +1,7 @@
+import { dateLocale } from "./i18n";
+
+export { ordinal } from "./i18n/en";
+
 type Child = Node | string | number | false | null | undefined;
 type Attrs = Record<string, string | number | boolean | EventListener | undefined>;
 
@@ -29,14 +33,8 @@ export function photoUrl(key: string): string {
   return `/api/photos/${key}`;
 }
 
-export function ordinal(place: number): string {
-  const tens = place % 100;
-  if (tens >= 11 && tens <= 13) return `${place}th`;
-  return `${place}${({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[place % 10] ?? "th"}`;
-}
-
 /**
- * An event date (YYYY-MM-DD) as people say it, in the reader's language, inside
+ * An event date (YYYY-MM-DD) as people say it, in the app's language, inside
  * a <time> that keeps the machine-readable form. The date has no time zone, so
  * it is formatted as UTC to stop it slipping a day.
  */
@@ -44,7 +42,7 @@ export function dateEl(iso: string, cls?: string): HTMLElement {
   const date = new Date(`${iso}T00:00:00Z`);
   const text = Number.isNaN(date.getTime())
     ? iso
-    : date.toLocaleDateString(navigator.language, { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    : date.toLocaleDateString(dateLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
   return h("time", { datetime: iso, class: cls }, text);
 }
 

@@ -23,10 +23,10 @@ export function sniffImageType(head: Uint8Array): string | null {
  * skipped.
  */
 export async function checkPhoto(file: File): Promise<string> {
-  if (!PHOTO_TYPES.includes(file.type)) throw new HttpError(415, "Photos must be JPEG, PNG or WebP");
-  if (file.size > MAX_PHOTO_BYTES) throw new HttpError(413, "That photo is too large");
+  if (!PHOTO_TYPES.includes(file.type)) throw new HttpError(415, "Photos must be JPEG, PNG or WebP", "photoType");
+  if (file.size > MAX_PHOTO_BYTES) throw new HttpError(413, "That photo is too large", "photoTooLarge");
   const type = sniffImageType(new Uint8Array(await file.slice(0, 12).arrayBuffer()));
-  if (!type) throw new HttpError(415, "Photos must be JPEG, PNG or WebP");
+  if (!type) throw new HttpError(415, "Photos must be JPEG, PNG or WebP", "photoType");
   return type;
 }
 

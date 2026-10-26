@@ -12,6 +12,7 @@ public/app.js
 public/app.js.map
 # Written by scripts/build-help.mjs from src/help/
 public/help/
+public/es/
 public/sitemap.xml
 public/robots.txt
 test-results/
