@@ -1,5 +1,6 @@
 import { env, exports } from "cloudflare:workers";
 import { vi } from "vitest";
+import { jpegBytes, pngBytes, webpBytes } from "./images";
 
 export const ORIGIN = "https://example.com";
 
@@ -63,10 +64,24 @@ export const SIGNATURES: Record<string, number[]> = {
   "image/webp": [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50],
 };
 
-/** A `bytes`-long file declared as `type`, starting with that type's real signature. */
+const BUILDERS: Record<string, (pad: number) => Uint8Array> = {
+  "image/jpeg": (pad) => jpegBytes({ pad }),
+  "image/png": (pad) => pngBytes({ pad }),
+  "image/webp": (pad) => webpBytes({ pad }),
+};
+
+/**
+ * A photo file declared as `type`, at least `bytes` long. Accepted types get a
+ * real (tiny) image the Worker can parse and strip (SW-28); any other type gets
+ * `bytes` zeros. `bytes` 0 is an empty file.
+ */
 export function jpeg(bytes = 12, type = "image/jpeg"): File {
-  const data = new Uint8Array(bytes);
-  data.set((SIGNATURES[type] ?? []).slice(0, bytes));
+  const build = BUILDERS[type];
+  let data: Uint8Array = new Uint8Array(bytes);
+  if (build && bytes > 0) {
+    const base = build(0);
+    data = base.length >= bytes ? base : build(bytes - base.length);
+  }
   return new File([data], "dish.jpg", { type });
 }
 
