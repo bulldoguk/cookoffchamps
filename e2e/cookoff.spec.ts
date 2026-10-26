@@ -75,30 +75,64 @@ test("a whole cookoff: set up, print, vote blind, reveal 3-2-1, results", async 
   await expect(page.getByTestId("votes-cast")).toHaveText("4", { timeout: 15_000 });
   await page.getByRole("button", { name: "Peek at the standings" }).click();
   await expect(page.locator(".peek li").first()).toContainText("Chili verde (Shannon): 2");
-  await page.getByRole("button", { name: "Close voting" }).click();
+  const confirmDialog = page.locator("dialog.confirm");
+  const closeVoting = async () => {
+    await page.getByRole("button", { name: "Close voting" }).click();
+    await confirmDialog.getByRole("button", { name: "Close voting" }).click();
+    await expect(page.getByText("Voting is closed.")).toBeVisible();
+  };
+  await closeVoting();
+
+  // Closed too soon: reopen (votes kept), then close again (SW-23).
+  await page.getByRole("button", { name: "Reopen voting" }).click();
+  await expect(page.getByText("Voting is open.")).toBeVisible();
+  await expect(page.getByTestId("votes-cast")).toHaveText("4");
+  await closeVoting();
 
   // Closed but not revealed: guests still see no results.
   const later = await (await browser.newContext()).newPage();
   await later.goto(`/v/${eventId}`);
   await expect(later.getByText("The results are coming soon!")).toBeVisible();
 
-  // The reveal: 2nd is a tie, so it's one click, then the champion.
-  await page.getByRole("link", { name: "Start the reveal" }).click();
-  const stage = page.locator(".reveal");
-  await stage.click();
-  await expect(stage.locator(".place")).toHaveText("2nd place (tied)");
-  await expect(stage.locator(".cook")).toHaveText(["Grandma", "Kiana"]);
-  await stage.click();
-  await expect(stage.locator(".place")).toHaveText("Champion!");
-  await expect(stage.locator(".cook")).toHaveText("Shannon");
+  // The reveal asks first: Cancel stays put. Then 2nd is a tie, so it's one click, then the champion.
+  const reveal = async () => {
+    await page.getByRole("button", { name: "Start the reveal" }).click();
+    await confirmDialog.getByRole("button", { name: "Reveal the winners" }).click();
+    const stage = page.locator(".reveal");
+    await stage.click();
+    await expect(stage.locator(".place")).toHaveText("2nd place (tied)");
+    await expect(stage.locator(".cook")).toHaveText(["Grandma", "Kiana"]);
+    await stage.click();
+    await expect(stage.locator(".place")).toHaveText("Champion!");
+    await expect(stage.locator(".cook")).toHaveText("Shannon");
+  };
+  await page.getByRole("button", { name: "Start the reveal" }).click();
+  await confirmDialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(page).toHaveURL(new RegExp(`/e/${eventId}$`));
+  await reveal();
 
   // The same QR link now shows the results.
-  await expect(async () => {
-    await later.reload();
-    await expect(later.locator(".place").first()).toHaveText("1st place");
-  }).toPass();
+  const resultsShown = () =>
+    expect(async () => {
+      await later.reload();
+      await expect(later.locator(".place").first()).toHaveText("1st place");
+    }).toPass();
+  await resultsShown();
   await expect(later.locator(".results")).toContainText("by Shannon");
   await expect(later.locator(".results")).toContainText("2 votes");
+
+  // Revealed by mistake? A family event can undo it: the results hide again (decision 17).
+  await page.getByRole("link", { name: "← Back to the event" }).click();
+  await page.getByRole("button", { name: "Undo the reveal" }).click();
+  await expect(confirmDialog).toContainText("could change");
+  await confirmDialog.getByRole("button", { name: "Undo the reveal" }).click();
+  await expect(page.getByText("Voting is closed.")).toBeVisible();
+  await later.reload();
+  await expect(later.getByText("The results are coming soon!")).toBeVisible();
+
+  // ...and reveal again.
+  await reveal();
+  await resultsShown();
 });
 
 test("the typed code finds the event", async ({ page, request }) => {

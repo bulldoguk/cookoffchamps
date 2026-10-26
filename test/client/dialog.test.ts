@@ -1,0 +1,62 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { confirmDialog } from "../../src/client/dialog";
+import { byText } from "./helpers";
+
+const ask = { title: "Reveal the winners?", body: "The results go public.", confirm: "Reveal the winners" };
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  document.body.replaceChildren();
+});
+
+function shown(): HTMLDialogElement {
+  return document.querySelector("dialog.confirm") as HTMLDialogElement;
+}
+
+describe("confirmDialog", () => {
+  it("explains the step, focuses Cancel, and is labelled for screen readers", () => {
+    void confirmDialog(ask);
+    const dialog = shown();
+    expect(dialog.hasAttribute("open")).toBe(true);
+    expect(dialog.querySelector("h2")!.textContent).toBe("Reveal the winners?");
+    expect(dialog.querySelector("p")!.textContent).toBe("The results go public.");
+    expect(dialog.getAttribute("aria-labelledby")).toBe("confirm-title");
+    expect(dialog.getAttribute("aria-describedby")).toBe("confirm-body");
+    expect(document.activeElement!.textContent).toBe("Cancel");
+    expect([...dialog.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Cancel", "Reveal the winners"]);
+  });
+
+  it("resolves true for the confirm button and goes away", async () => {
+    const answer = confirmDialog(ask);
+    byText(shown(), "button", "Reveal the winners").click();
+    expect(await answer).toBe(true);
+    expect(shown()).toBeNull();
+  });
+
+  it("resolves false for Cancel", async () => {
+    const answer = confirmDialog(ask);
+    byText(shown(), "button", "Cancel").click();
+    expect(await answer).toBe(false);
+    expect(shown()).toBeNull();
+  });
+
+  it("resolves false for Escape (the dialog's cancel event)", async () => {
+    const answer = confirmDialog(ask);
+    const escape = new Event("cancel", { cancelable: true });
+    shown().dispatchEvent(escape);
+    expect(escape.defaultPrevented).toBe(true);
+    expect(await answer).toBe(false);
+  });
+
+  it("opens as a modal where the browser supports it", () => {
+    const showModal = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "showModal", { value: showModal, configurable: true });
+    try {
+      void confirmDialog(ask);
+      expect(showModal).toHaveBeenCalledOnce();
+      expect(shown().hasAttribute("open")).toBe(false);
+    } finally {
+      delete (HTMLElement.prototype as { showModal?: unknown }).showModal;
+    }
+  });
+});

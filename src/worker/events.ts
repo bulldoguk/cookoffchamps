@@ -106,13 +106,14 @@ export async function updateEvent(request: Request, env: Env, eventId: string): 
   return json({ ok: true });
 }
 
-// Voting is opened and closed by hand (decision 6). It can be reopened after a
-// close, but once revealed the results are final.
+// Voting is opened and closed by hand (decision 6). Both a close and a reveal
+// can be undone (decision 17): revealed goes back to closed, which hides the
+// results again. Pro events, when they exist, will keep results final.
 const TRANSITIONS: Record<Status, Status[]> = {
   setup: ["open"],
   open: ["closed"],
   closed: ["open", "revealed"],
-  revealed: [],
+  revealed: ["closed"],
 };
 
 /** POST /api/events/:id/status {status} */
@@ -177,7 +178,8 @@ export async function addCategory(request: Request, env: Env, eventId: string): 
 /** PATCH /api/categories/:id {name} */
 export async function renameCategory(request: Request, env: Env, categoryId: string): Promise<Response> {
   const email = await requireSession(request, env);
-  await categoryEvent(env, categoryId, email);
+  const { event } = await categoryEvent(env, categoryId, email);
+  requireEditable(event);
   const name = requireText((await readJson(request)).name, "name", 60);
   await env.DB.prepare("UPDATE categories SET name = ? WHERE id = ?").bind(name, categoryId).run();
   return json({ ok: true });

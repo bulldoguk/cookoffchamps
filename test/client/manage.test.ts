@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ManageView } from "../../src/client/types";
 import { entryForm, manageView, PEEK_MS, POLL_MS, stepper } from "../../src/client/views/manage";
-import { byText, fakeApi, fill, flush, makeCtx, submit } from "./helpers";
+import { answerDialog, byText, fakeApi, fill, flush, makeCtx, submit } from "./helpers";
 
 vi.mock("../../src/client/photo", () => ({ resizePhoto: vi.fn(async () => new Blob(["small"], { type: "image/jpeg" })) }));
 
@@ -81,20 +81,42 @@ describe("status controls", () => {
     expect(calls.find((c) => c.method === "POST")!.body).toEqual({ status: "open" });
   });
 
-  it("closes voting while open, and shows the live votes-cast count", async () => {
+  it("closes voting while open, after a confirmation, and shows the live votes-cast count", async () => {
     const { ctx, cleanup } = await open(view({}, "open"), { "POST /api/events/e1/status": { status: "closed" } });
     expect(ctx.root.querySelector("[data-testid=votes-cast]")!.textContent).toBe("7");
     byText(ctx.root, "button", "Close voting").click();
     await flush();
+    expect(document.querySelector("dialog.confirm")!.textContent).toContain("Guests can't vote until you reopen it.");
+    await answerDialog("Cancel");
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+
+    byText(ctx.root, "button", "Close voting").click();
+    await flush();
+    await answerDialog("Close voting");
     expect(calls.find((c) => c.method === "POST")!.body).toEqual({ status: "closed" });
     cleanup();
   });
 
-  it("offers the reveal or a reopen once closed", async () => {
+  it("starts the reveal only after a confirmation", async () => {
+    const { ctx } = await open(view({}, "closed"));
+    byText(ctx.root, "button", "Start the reveal").click();
+    await flush();
+    expect(document.querySelector("dialog.confirm")!.textContent).toContain("the results go public");
+    await answerDialog("Cancel");
+    expect(ctx.navigate).not.toHaveBeenCalled();
+
+    byText(ctx.root, "button", "Start the reveal").click();
+    await flush();
+    await answerDialog("Reveal the winners");
+    expect(ctx.navigate).toHaveBeenCalledWith("/e/e1/reveal");
+  });
+
+  it("offers a reopen once closed, without asking, and says votes are kept", async () => {
     const { ctx } = await open(view({}, "closed"), { "POST /api/events/e1/status": { status: "open" } });
-    expect(byText(ctx.root, "a", "Start the reveal").getAttribute("href")).toBe("/e/e1/reveal");
+    expect(ctx.root.textContent).toContain("Closed too soon? Reopen voting: every vote so far is kept.");
     byText(ctx.root, "button", "Reopen voting").click();
     await flush();
+    expect(document.querySelector("dialog.confirm")).toBeNull();
     expect(calls.find((c) => c.method === "POST")!.body).toEqual({ status: "open" });
   });
 
@@ -103,6 +125,20 @@ describe("status controls", () => {
     expect(byText(ctx.root, "a", "See the results page").getAttribute("href")).toBe("/v/e1");
     expect(ctx.root.querySelector(".entry-form")).toBeNull();
     expect(ctx.root.textContent).not.toContain("Delete entry");
+  });
+
+  it("undoes a reveal back to closed, after warning that the standings could change", async () => {
+    const { ctx } = await open(view({}, "revealed"), { "POST /api/events/e1/status": { status: "closed" } });
+    byText(ctx.root, "button", "Undo the reveal").click();
+    await flush();
+    expect(document.querySelector("dialog.confirm")!.textContent).toContain("the standings people have already seen could change");
+    await answerDialog("Cancel");
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+
+    byText(ctx.root, "button", "Undo the reveal").click();
+    await flush();
+    await answerDialog("Undo the reveal");
+    expect(calls.find((c) => c.method === "POST")!.body).toEqual({ status: "closed" });
   });
 
   it("shows a failed action in the notice line", async () => {
