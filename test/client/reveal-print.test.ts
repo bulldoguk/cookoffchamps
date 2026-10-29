@@ -81,6 +81,7 @@ describe("reveal screen", () => {
     const cleanup = await revealView(ctx, "e1");
     const stage = ctx.root.querySelector<HTMLElement>(".reveal")!;
     expect(stage.textContent).toContain("Tap for 3rd place");
+    expect(stage.querySelector(".made-with")).toBeNull();
     expect(stage.getAttribute("aria-live")).toBe("polite");
     expect(stage.querySelector("time")).toBeNull(); // no date set
     expect(stage.dataset.place).toBeUndefined();
@@ -107,6 +108,13 @@ describe("reveal screen", () => {
     expect(stage.querySelector("img")!.getAttribute("src")).toBe("/api/photos/events/e1/a");
     expect(stage.querySelector(".votes")!.textContent).toBe("5 votes");
     expect(stage.textContent).toContain("🎉");
+    // SW-59: the last frame says "run your own", and tapping that link doesn't advance.
+    const link = stage.querySelector<HTMLAnchorElement>(".made-with a")!;
+    expect(link.getAttribute("href")).toBe("/?ref=reveal");
+    link.addEventListener("click", (e) => e.preventDefault()); // happy-dom would navigate
+    link.click();
+    await flush();
+    expect(stage.querySelector(".made-with")).not.toBeNull();
     expect(calls.filter((c) => c.method === "POST")).toEqual([{ method: "POST", path: "/api/events/e1/status", body: { status: "revealed" } }]);
 
     // Past the end, clicks do nothing more.
@@ -172,6 +180,7 @@ describe("printing (decision 11)", () => {
     expect(poster.querySelector(".qr svg")).not.toBeNull();
     expect(poster.querySelector(".url")!.textContent).toBe("localhost/c/K7QM2X");
     expect(poster.querySelector(".code")!.textContent).toBe("K7QM2X");
+    expect(poster.querySelector(".made-with")!.textContent).toBe("Run your own cookoff, free at localhost");
     byText(ctx.root, "button", "Print").click();
     expect(print).toHaveBeenCalled();
   });

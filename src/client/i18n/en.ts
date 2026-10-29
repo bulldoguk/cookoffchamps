@@ -44,6 +44,8 @@ export const en = {
     dateLabel: "Date ",
     cookLabel: "Cook ",
     dishLabel: "Dish ",
+    // SW-59: the "made with" line on results and the reveal.
+    runYourOwn: "Run your own cookoff, free",
   },
 
   status: {
@@ -70,6 +72,12 @@ export const en = {
     newCookoff: "New cookoff",
     namePlaceholder: "Bailey Family Chili Cookoff",
     create: "Create",
+    kind: "Kind of cookoff",
+    family: "Family",
+    familyHint: "Guests vote for their favourite dish.",
+    pro: "Pro",
+    proHint: "Judges score every dish blind.",
+    comingSoon: "(coming soon)",
     loggedInAs: (email: string) => `Logged in as ${email} `,
     logout: "Log out",
     yourCookoffs: "Your cookoffs",
@@ -175,6 +183,7 @@ export const en = {
     enterCode: "and enter the code ",
     scanToVote: "Scan to vote",
     addDishesFirst: "Add some dishes first.",
+    runYourOwnAt: (host: string) => `Run your own cookoff, free at ${host}`,
   },
 };
 

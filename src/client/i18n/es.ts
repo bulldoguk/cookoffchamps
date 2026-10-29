@@ -47,6 +47,7 @@ export const es: Messages = {
     dateLabel: "Fecha ",
     cookLabel: "Quién lo cocinó ",
     dishLabel: "Platillo ",
+    runYourOwn: "Organiza tu propio concurso, gratis",
   },
 
   status: {
@@ -73,6 +74,12 @@ export const es: Messages = {
     newCookoff: "Nuevo concurso",
     namePlaceholder: "Concurso de chili de la familia Bailey",
     create: "Crear",
+    kind: "Tipo de concurso",
+    family: "Familiar",
+    familyHint: "Los invitados votan por su platillo favorito.",
+    pro: "Pro",
+    proHint: "Un jurado califica cada platillo a ciegas.",
+    comingSoon: "(muy pronto)",
     loggedInAs: (email) => `Sesión iniciada como ${email} `,
     logout: "Cerrar sesión",
     yourCookoffs: "Tus concursos",
@@ -179,6 +186,7 @@ export const es: Messages = {
     enterCode: "y escribe el código ",
     scanToVote: "Escanea para votar",
     addDishesFirst: "Primero agrega algunos platillos.",
+    runYourOwnAt: (host: string) => `Organiza tu propio concurso, gratis, en ${host}`,
   },
 };
 

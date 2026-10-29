@@ -1,4 +1,4 @@
-import { dateLocale } from "./i18n";
+import { dateLocale, m } from "./i18n";
 
 export { ordinal } from "./i18n/en";
 
@@ -44,6 +44,15 @@ export function dateEl(iso: string, cls?: string): HTMLElement {
     ? iso
     : date.toLocaleDateString(dateLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
   return h("time", { datetime: iso, class: cls }, text);
+}
+
+/**
+ * The "run your own cookoff" line (SW-59). A full page load on purpose, not an
+ * in-app link: the Worker counts ?ref per surface, because Web Analytics drops
+ * query strings.
+ */
+export function madeWith(ref: "results" | "reveal"): HTMLElement {
+  return h("p", { class: "made-with" }, h("a", { href: `/?ref=${ref}` }, m().common.runYourOwn));
 }
 
 /** The rosette mark. Decorative wherever it appears next to the name. */

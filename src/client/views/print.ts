@@ -38,6 +38,8 @@ export async function printView(ctx: Ctx, eventId: string, kind: string): Promis
         h("p", {}, t.scanOrGo),
         h("p", { class: "url" }, `${ctx.url.host}/c/${data.event.code}`),
         h("p", {}, t.enterCode, h("strong", { class: "code" }, data.event.code)),
+        // SW-59. Paper can't carry a ?ref, so poster visitors arrive as direct traffic.
+        h("p", { class: "made-with" }, t.runYourOwnAt(ctx.url.host)),
       ),
     );
     await renderQr(qr, voteUrl);

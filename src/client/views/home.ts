@@ -61,6 +61,28 @@ function loginForm(ctx: Ctx): HTMLElement {
   return form;
 }
 
+/**
+ * Family or Pro, chosen when the event is created (pro-events design). Pro isn't
+ * built yet (SW-25), so it shows as coming soon and every event is a family one.
+ */
+function kindChoice(): HTMLElement {
+  const t = m().home;
+  const option = (value: string, label: string, hint: string, on: boolean) =>
+    h(
+      "label",
+      { class: on ? "kind" : "kind soon" },
+      h("input", { type: "radio", name: "kind", value, checked: on, disabled: !on }),
+      h("span", {}, h("span", {}, h("strong", {}, label), on ? null : ` ${t.comingSoon}`), h("span", { class: "muted" }, hint)),
+    );
+  return h(
+    "fieldset",
+    { class: "kinds" },
+    h("legend", {}, t.kind),
+    option("family", t.family, t.familyHint, true),
+    option("pro", t.pro, t.proHint, false),
+  );
+}
+
 function createForm(ctx: Ctx): HTMLElement {
   const t = m();
   const name = h("input", { name: "name", required: true, maxlength: 120, placeholder: t.home.namePlaceholder }) as HTMLInputElement;
@@ -83,6 +105,7 @@ function createForm(ctx: Ctx): HTMLElement {
     h("h2", {}, t.home.newCookoff),
     h("label", {}, t.common.nameLabel, name),
     h("label", {}, t.common.dateLabel, date),
+    kindChoice(),
     h("button", { type: "submit" }, t.home.create),
     status,
   );

@@ -390,6 +390,30 @@ dialog.confirm .actions { display: flex; flex-wrap: wrap; justify-content: flex-
 .site-footer a { color: var(--muted); font-weight: 600; display: inline-block; padding: 10px 2px; }
 .site-footer a:hover { color: var(--accent); }
 
+/* SW-59: "run your own cookoff" on results, the reveal's last frame and the poster */
+.made-with { text-align: center; color: var(--muted); font-size: 0.95rem; margin: 18px 0 0; }
+.made-with a { color: var(--accent); font-weight: 650; display: inline-block; padding: 10px 2px; }
+.reveal .made-with { font-size: clamp(1rem, 1.6vw, 1.3rem); animation: rise 0.5s ease-out 2.4s both; }
+
+/* Family / Pro choice on the create form. Pro is a disabled "coming soon" teaser. */
+.kinds { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+.kinds legend { font-weight: 650; padding: 0; margin-bottom: 6px; }
+.kind {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0 0 8px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  cursor: pointer;
+}
+.kind input { width: auto; min-height: 0; margin: 4px 0 0; flex: none; }
+.kind > span { display: flex; flex-direction: column; font-weight: 400; }
+.kind .muted { font-size: 0.9rem; }
+.kind.soon { cursor: not-allowed; border-style: dashed; color: var(--muted); }
+
 /* ---------- Help pages (SW-24): plain HTML written at build time ---------- */
 .help .lede { color: var(--muted); margin-top: -0.4rem; }
 .help-filter { margin: 0 0 20px; }
