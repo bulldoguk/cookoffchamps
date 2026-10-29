@@ -57,6 +57,11 @@ export function drawChrome(doc: Document, onSwitch: () => void): void {
     help.textContent = t.helpLink;
     help.setAttribute("href", t.helpHref);
   }
+  const printables = doc.getElementById("printables-link");
+  if (printables) {
+    printables.textContent = t.printablesLink;
+    printables.setAttribute("href", t.printablesHref);
+  }
   const partOf = doc.getElementById("part-of");
   if (partOf) partOf.textContent = t.partOf;
   const box = doc.getElementById("lang-switch");

@@ -14,17 +14,25 @@ const tmp = path.join(root, ".wrangler", "help-build.mjs");
 
 await build({
   stdin: {
-    contents: `export { helpPage, sitemap, robots } from "./src/help/render.ts"; export { en } from "./src/help/content.ts"; export { es } from "./src/help/content-es.ts";`,
+    contents: [
+      `export { helpPage, sitemap, robots } from "./src/help/render.ts";`,
+      `export { en } from "./src/help/content.ts"; export { es } from "./src/help/content-es.ts";`,
+      `export { sheetPage, indexPage, printablePaths, pdfPath, qrTarget } from "./src/printables/render.ts";`,
+      `export { en as printEn } from "./src/printables/content.ts"; export { es as printEs } from "./src/printables/content-es.ts";`,
+      `export { qrSvg } from "./src/client/qr.ts";`,
+    ].join("\n"),
     resolveDir: root,
     loader: "ts",
   },
   bundle: true,
   format: "esm",
   platform: "node",
+  // qrcode is CommonJS with Node built-ins; Node loads it from node_modules.
+  external: ["qrcode"],
   outfile: tmp,
   logLevel: "warning",
 });
-const { helpPage, sitemap, robots, en, es } = await import(`${pathToFileURL(tmp).href}?t=${Date.now()}`);
+const { helpPage, sitemap, robots, en, es, sheetPage, indexPage, printablePaths, printEn, printEs, qrSvg, qrTarget } = await import(`${pathToFileURL(tmp).href}?t=${Date.now()}`);
 
 const versions = [en, es]; // English first: it's the x-default for search engines
 for (const content of versions) {
@@ -32,7 +40,22 @@ for (const content of versions) {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "index.html"), helpPage(content, versions));
 }
-fs.writeFileSync(path.join(pub, "sitemap.xml"), sitemap());
+// The printables (SW-62): an index and a page per sheet, in each language. The
+// PDFs are printed from these pages afterwards by scripts/build-printables.mjs.
+const printVersions = [printEn, printEs];
+const write = (p, html) => {
+  const dir = path.join(pub, ...p.split("/").filter(Boolean));
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "index.html"), html);
+};
+for (const content of printVersions) {
+  write(content.path, indexPage(content, printVersions));
+  for (const sheet of content.sheets) {
+    write(sheet.path, sheetPage(content, printVersions, sheet.id, await qrSvg(qrTarget(sheet, content))));
+  }
+}
+
+fs.writeFileSync(path.join(pub, "sitemap.xml"), sitemap(printablePaths(printVersions)));
 fs.writeFileSync(path.join(pub, "robots.txt"), robots());
 
 await build({
@@ -44,4 +67,4 @@ await build({
   outfile: path.join(pub, "help", "filter.js"),
   logLevel: "warning",
 });
-console.log("help pages written");
+console.log("help and printables pages written");

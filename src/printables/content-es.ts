@@ -1,0 +1,97 @@
+import type { PrintablesContent } from "./content";
+
+// The Spanish printables (SW-62), drafted by Claude like the rest of the Spanish
+// site and covered by the native-speaker review (SW-29). Same sheet ids and refs
+// as content.ts.
+
+export const es: PrintablesContent = {
+  lang: "es",
+  langName: "Español",
+  path: "/es/imprimibles/",
+  title: "Imprimibles gratis para tu concurso",
+  description:
+    "Boletas y hojas de puntos gratis para imprimir: concurso de pays de Acción de Gracias, concurso de galletas navideñas y concurso de chili. PDF tamaño carta.",
+  intro: "Boletas, hojas de puntos y hojas de conteo para tu próximo concurso. Gratis para imprimir y compartir, sin registrarte.",
+  appHref: "/?lang=es",
+  downloadPdf: "Descargar el PDF",
+  orPrint: "O imprime esta página directamente desde tu navegador.",
+  tipsTitle: "Consejos para el día",
+  allPrintables: "Todos los imprimibles",
+  skipThePaper: "Olvídate del papel: los invitados votan en su teléfono y la app cuenta.",
+  runItFree: "Organiza tu propio concurso, gratis, en cookoffchamps.com",
+  backToApp: "Ir a Cookoff Champs",
+  partOf: "Parte de",
+  sheets: [
+    {
+      id: "pie",
+      path: "/es/imprimibles/boleta-concurso-de-pays/",
+      ref: "pie",
+      title: "Boleta para concurso de pays",
+      description:
+        "Boleta gratis para imprimir para un concurso de pays de Acción de Gracias, seis por hoja, con hoja de conteo de votos. PDF tamaño carta.",
+      intro: "Seis boletas por hoja, más una hoja de conteo. Numera cada pay, reparte las boletas y cuenta al final.",
+      tips: [
+        "Pon una tarjeta con un número junto a cada pay en lugar del nombre de quien lo hizo, para que voten por el pay y no por su tía favorita.",
+        "Una boleta por invitado. Imprime algunas de más para quien llegue tarde.",
+        "Puede haber empates. Llámalos cocampeones, o que se vuelvan a probar los pays empatados.",
+      ],
+      parts: [
+        { kind: "slips", heading: "Boleta del concurso de pays", lines: ["Mejor pay", "Mejor masa", "Más original"] },
+        { kind: "tally", heading: "Conteo del concurso de pays", columns: ["Pay #", "Pay", "Repostero", "Votos", "Total"] },
+      ],
+    },
+    {
+      id: "cookie",
+      path: "/es/imprimibles/hoja-de-puntos-concurso-de-galletas/",
+      ref: "cookie",
+      title: "Hoja de puntos para concurso de galletas",
+      description:
+        "Hoja de puntos gratis para imprimir para un concurso de galletas navideñas: el jurado califica sabor, textura, presentación y espíritu navideño. Incluye boletas. PDF tamaño carta.",
+      intro: "Una hoja de puntos para cada juez, más boletas del voto del público para todos los demás.",
+      tips: [
+        "Dale a cada juez su propia hoja, y que califiquen antes de comentarlo entre ellos.",
+        "Un plato de cada galleta por juez lo mantiene justo: a nadie le toca la rota.",
+        "Suma cada fila: gana el total más alto. Deja aparte el voto del público, para que los invitados también tengan un premio por el que votar.",
+      ],
+      parts: [
+        {
+          kind: "scores",
+          heading: "Hoja de puntos del concurso de galletas",
+          scale: "Califica cada una del 1 (no me gustó) al 5 (excelente).",
+          judge: "Juez",
+          entry: "Galleta #",
+          criteria: ["Sabor", "Textura", "Presentación", "Espíritu navideño"],
+          total: "Total",
+        },
+        { kind: "slips", heading: "Voto del público: galletas", lines: ["Mi galleta favorita"] },
+      ],
+    },
+    {
+      id: "chili",
+      path: "/es/imprimibles/boleta-concurso-de-chili/",
+      ref: "chili",
+      title: "Boleta y hoja del jurado para concurso de chili",
+      description:
+        "Boleta gratis para imprimir para un concurso de chili, una hoja del jurado para aroma, color, consistencia, sabor y regusto, y una hoja de conteo. PDF tamaño carta.",
+      intro: "Boletas para invitados, una hoja del jurado con las cinco cosas que se califican en un chili, y una hoja de conteo.",
+      tips: [
+        "Sirve cada chili en vasos iguales y numerados, para que nadie sepa de quién es cada uno.",
+        "Ten agua, galletas saladas o pan entre probadas.",
+        "El jurado califica cada chili antes de pasar al siguiente, sin ir y venir.",
+      ],
+      parts: [
+        { kind: "slips", heading: "Boleta del concurso de chili", lines: ["Mejor chili", "Mejor picante"] },
+        {
+          kind: "scores",
+          heading: "Hoja del jurado: chili",
+          scale: "Califica cada uno del 1 (malo) al 10 (excelente).",
+          judge: "Juez",
+          entry: "Chili #",
+          criteria: ["Aroma", "Color", "Consistencia", "Sabor", "Regusto"],
+          total: "Total",
+        },
+        { kind: "tally", heading: "Conteo del concurso de chili", columns: ["Chili #", "Chili", "Cocinero", "Votos", "Total"] },
+      ],
+    },
+  ],
+};

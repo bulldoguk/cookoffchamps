@@ -107,7 +107,7 @@ ${s.questions.map((q) => question(q, content.linkLabel)).join("\n")}
       <p><a class="button" href="${escapeHtml(content.appHref)}">${escapeHtml(content.backToApp)}</a></p>
     </main>
     <footer class="site-footer">
-      ${escapeHtml(content.partOf)} <a href="https://hostedinthebarn.com">Hosted in the Barn</a>
+      <a href="${escapeHtml(content.printablesHref)}">${escapeHtml(content.printablesLink)}</a> · ${escapeHtml(content.partOf)} <a href="https://hostedinthebarn.com">Hosted in the Barn</a>
     </footer>
   </body>
 </html>
@@ -117,10 +117,11 @@ ${s.questions.map((q) => question(q, content.linkLabel)).join("\n")}
 /** The pages search engines should know about. Event pages are private, so never listed. */
 export const PUBLIC_PATHS = ["/", "/help/", "/es/ayuda/"];
 
-export function sitemap(): string {
+/** `extra` is the other build-time pages, such as the printables (SW-62). */
+export function sitemap(extra: string[] = []): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${PUBLIC_PATHS.map((p) => `  <url><loc>${ORIGIN}${p}</loc></url>`).join("\n")}
+${[...PUBLIC_PATHS, ...extra].map((p) => `  <url><loc>${ORIGIN}${p}</loc></url>`).join("\n")}
 </urlset>
 `;
 }

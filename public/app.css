@@ -760,6 +760,43 @@ main:has(.reveal) { max-width: none; padding-top: 0; padding-bottom: 0; }
 .tent-card .category { text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; margin: 0; }
 .tent-card .qr svg { display: block; margin: 0 auto; width: 1.6in; height: 1.6in; }
 
+/* ---------- Printables (SW-62): ballots and score sheets, previewed on screen as paper ---------- */
+.printables ul { padding-left: 1.2em; }
+.sheets { display: grid; gap: 24px; margin: 24px 0; }
+.sheet {
+  --sheet-line: #444;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #000;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 0.4in;
+  max-width: 8.5in;
+  width: 100%;
+  margin: 0 auto;
+  font-family: var(--font-body);
+}
+.sheet-title { font-family: var(--font-display); font-size: 1.6rem; margin: 0 0 0.15in; color: #000; }
+.sheet-note { margin: 0 0 0.12in; font-size: 0.95rem; }
+.sheet-line, .slip-line { display: flex; align-items: flex-end; gap: 8px; margin: 0 0 0.12in; font-weight: 650; }
+.sheet-line .blank, .slip-line .blank { flex: 1; border-bottom: 1.5px solid var(--sheet-line); min-height: 1.4em; color: #666; font-weight: 400; }
+.slip-line .blank { flex: 0 0 5em; }
+.slip-line span:first-child { flex: 1; }
+.sheet-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.95rem; }
+.sheet-table th { text-align: left; padding: 6px; border: 1.5px solid var(--sheet-line); background: #f1ece4; font-weight: 700; }
+.sheet-table td { border: 1px solid var(--sheet-line); height: 0.48in; }
+.sheet-table.tally td { height: 0.42in; }
+.slips { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.slip { border: 1.5px dashed #888; padding: 0.22in; display: flex; flex-direction: column; }
+.slip-url { margin: auto 0 0; font-size: 0.8rem; color: #555; text-align: right; }
+.slip-title { font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; margin: 0 0 0.15in; }
+.slips .sheet-foot { grid-column: 1 / -1; }
+.sheet-foot { display: flex; align-items: center; gap: 0.2in; margin-top: auto; padding-top: 0.2in; font-size: 0.9rem; }
+.sheet-foot .qr svg { display: block; width: 0.95in; height: 0.95in; }
+.sheet-foot p { margin: 0; }
+.sheet-foot img { vertical-align: middle; }
+
 @page { size: letter; margin: 0.5in; }
 @media print {
   :root { --bg: #fff; --card: #fff; --ink: #000; --muted: #333; --accent: #000; }
@@ -773,4 +810,10 @@ main:has(.reveal) { max-width: none; padding-top: 0; padding-bottom: 0; }
   .poster .url { font-size: 1.4rem; }
   .poster .qr svg { width: 4.5in; }
   .cards { grid-template-columns: 1fr 1fr; }
+  /* One sheet per printed page, filling it, with the QR foot at the bottom. */
+  .printables .site-footer { display: none; }
+  .sheets { display: block; margin: 0; }
+  .sheet { box-shadow: none; border-radius: 0; padding: 0; max-width: none; height: 10in; break-after: page; }
+  .sheet:last-child { break-after: auto; }
+  .slips { grid-template-rows: repeat(3, 1fr) auto; }
 }

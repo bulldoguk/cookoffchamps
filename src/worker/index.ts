@@ -132,8 +132,11 @@ async function respond(request: Request, env: Env, url: URL, isApi: boolean): Pr
   }
 }
 
-/** The surfaces that link back to the home page with a ?ref= (SW-59). */
-const REFS = new Set(["results", "reveal"]);
+/**
+ * The surfaces that link back to the home page with a ?ref=: the results page and
+ * the reveal (SW-59), and the QR codes on the printables (SW-62).
+ */
+const REFS = new Set(["results", "reveal", "pie", "cookie", "chili"]);
 
 /**
  * Counts a home-page visit that came from a "run your own cookoff" link. Unknown

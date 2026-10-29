@@ -31,6 +31,8 @@ export const es: Messages = {
     generic: "Algo salió mal. Inténtalo de nuevo.",
     helpLink: "Ayuda y preguntas",
     helpHref: "/es/ayuda/",
+    printablesLink: "Imprimibles gratis",
+    printablesHref: "/es/imprimibles/",
     partOf: "Parte de",
   },
 
