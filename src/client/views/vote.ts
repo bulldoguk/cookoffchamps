@@ -1,6 +1,6 @@
 import { api, ApiError } from "../api";
 import type { Ctx } from "../app";
-import { dateEl, h, mount, photoUrl } from "../dom";
+import { dateEl, h, madeWith, mount, photoUrl } from "../dom";
 import { errorText, m } from "../i18n";
 import { getTurnstileToken } from "../turnstile";
 import type { PublicEntry, PublicView } from "../types";
@@ -51,7 +51,7 @@ export async function voteView(ctx: Ctx, eventId: string): Promise<void> {
   const header = [h("h1", {}, event.name), event.date ? h("p", { class: "muted event-date" }, dateEl(event.date)) : null];
 
   if (event.status === "revealed") {
-    mount(ctx.root, ...header, ...results(view));
+    mount(ctx.root, ...header, ...results(view), madeWith("results"));
     return;
   }
 

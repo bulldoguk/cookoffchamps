@@ -179,6 +179,11 @@ describe("results page (decision 13)", () => {
     expect(ctx.root.textContent).toContain("4 votes");
     expect(ctx.root.textContent).toContain("1 vote");
     expect(ctx.root.querySelector("h2")).toBeNull();
+    // SW-59: a full page load (no data-link), so the Worker can count the ref.
+    const link = ctx.root.querySelector<HTMLAnchorElement>(".made-with a")!;
+    expect(link.getAttribute("href")).toBe("/?ref=results");
+    expect(link.hasAttribute("data-link")).toBe(false);
+    expect(link.textContent).toBe("Run your own cookoff, free");
   });
 
   it("marks a shared lower place as tied, and heads each category", async () => {

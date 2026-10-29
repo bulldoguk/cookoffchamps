@@ -118,7 +118,10 @@ export default {
 async function respond(request: Request, env: Env, url: URL, isApi: boolean): Promise<Response> {
   const canonical = canonicalRedirect(url, env);
   if (canonical) return Response.redirect(canonical, 301);
-  if (!isApi) return env.ASSETS.fetch(request);
+  if (!isApi) {
+    await countRef(request, env, url);
+    return env.ASSETS.fetch(request);
+  }
   if (isCrossSite(request)) return error(403, "Cross-site request refused");
   try {
     return await route(request, env);
@@ -126,5 +129,27 @@ async function respond(request: Request, env: Env, url: URL, isApi: boolean): Pr
     if (err instanceof HttpError) return error(err.status, err.message, err.code);
     console.error(err);
     return error(500, "Something went wrong");
+  }
+}
+
+/** The surfaces that link back to the home page with a ?ref= (SW-59). */
+const REFS = new Set(["results", "reveal"]);
+
+/**
+ * Counts a home-page visit that came from a "run your own cookoff" link. Unknown
+ * refs are ignored so the table can't be filled with junk, and a failed write
+ * never stops the page from loading.
+ */
+async function countRef(request: Request, env: Env, url: URL): Promise<void> {
+  const ref = url.searchParams.get("ref");
+  if (request.method !== "GET" || url.pathname !== "/" || !ref || !REFS.has(ref)) return;
+  try {
+    await env.DB.prepare(
+      "INSERT INTO ref_counts (ref, day, hits) VALUES (?, ?, 1) ON CONFLICT (ref, day) DO UPDATE SET hits = hits + 1",
+    )
+      .bind(ref, new Date().toISOString().slice(0, 10))
+      .run();
+  } catch (err) {
+    console.error(err);
   }
 }

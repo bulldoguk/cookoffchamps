@@ -1,7 +1,7 @@
 import { revealSequence, type RevealStep } from "../../shared/ranking";
 import { api } from "../api";
 import type { Ctx } from "../app";
-import { dateEl, h, logo, mount, photoUrl } from "../dom";
+import { dateEl, h, logo, madeWith, mount, photoUrl } from "../dom";
 import { m } from "../i18n";
 import type { ManageView, Totals } from "../types";
 
@@ -101,6 +101,7 @@ export async function revealView(ctx: Ctx, eventId: string): Promise<() => void>
         );
       })),
       h("p", { class: "hint" }, shown < slides.length - 1 ? t.reveal.tapNext : t.reveal.congrats),
+      shown === slides.length - 1 ? madeWith("reveal") : null,
     );
   }
 
@@ -121,7 +122,10 @@ export async function revealView(ctx: Ctx, eventId: string): Promise<() => void>
       void next();
     }
   };
-  stage.addEventListener("click", () => void next());
+  // A tap on the "run your own" link follows it rather than advancing the reveal.
+  stage.addEventListener("click", (e) => {
+    if (!(e.target as Element).closest("a")) void next();
+  });
   document.addEventListener("keydown", onKey);
   mount(ctx.root, back, stage);
   // Not focused on load: the keys work from anywhere on the page, and a focus

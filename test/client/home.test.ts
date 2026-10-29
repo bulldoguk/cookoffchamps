@@ -103,6 +103,11 @@ describe("home, logged in", () => {
     });
     const ctx = makeCtx();
     await homeView(ctx);
+    // Family is the only kind on offer; Pro is shown as coming soon (SW-59).
+    const kinds = [...ctx.root.querySelectorAll<HTMLInputElement>('input[name="kind"]')];
+    expect(kinds.map((k) => [k.value, k.checked, k.disabled])).toEqual([["family", true, false], ["pro", false, true]]);
+    expect(ctx.root.querySelector(".kinds legend")!.textContent).toBe("Kind of cookoff");
+    expect(ctx.root.querySelector(".kind.soon")!.textContent).toContain("Pro (coming soon)");
     fill(ctx.root, "name", "Chili Night");
     fill(ctx.root, "date", "2026-11-01");
     submit(ctx.root.querySelector("form")!);

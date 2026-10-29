@@ -26,6 +26,31 @@ describe("worker routing", () => {
     expect(await res.text()).toContain("Cookoff Champs");
   });
 
+  it("counts home-page visits from the made-with links, per source and day (SW-59)", async () => {
+    const hits = () =>
+      env.DB.prepare("SELECT ref, hits FROM ref_counts ORDER BY ref").all<{ ref: string; hits: number }>().then((r) => r.results);
+    expect((await call("/?ref=results")).status).toBe(200);
+    await call("/?ref=results");
+    await call("/?ref=reveal");
+    // Unknown refs, other paths and other methods aren't counted.
+    await call("/?ref=spam");
+    await call("/help/?ref=results");
+    await call("/?ref=reveal", { method: "HEAD" });
+    await call("/");
+    expect(await hits()).toEqual([{ ref: "results", hits: 2 }, { ref: "reveal", hits: 1 }]);
+  });
+
+  it("still serves the page if the ref can't be counted", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await env.DB.exec("ALTER TABLE ref_counts RENAME TO ref_counts_gone");
+    try {
+      expect((await call("/?ref=results")).status).toBe(200);
+      expect(error).toHaveBeenCalled();
+    } finally {
+      await env.DB.exec("ALTER TABLE ref_counts_gone RENAME TO ref_counts");
+    }
+  });
+
   it("redirects www to the bare domain, keeping the path and query", async () => {
     const res = await worker.fetch(new Request("https://www.cookoffchamps.com/e/abc?x=1"), env);
     expect(res.status).toBe(301);
