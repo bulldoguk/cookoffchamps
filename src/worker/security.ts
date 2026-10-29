@@ -7,11 +7,13 @@ import type { Env } from "./env";
 
 // Two third parties: Turnstile (its script and its iframe) and the Cloudflare
 // Web Analytics beacon script (SW-60), which Cloudflare injects at the edge and
-// which reports to our own /cdn-cgi/rum, so connect-src stays 'self'. Inline
+// which reports to our own /cdn-cgi/rum, so connect-src stays 'self'. The whole
+// host is allowed: the beacon loads from a versioned path under beacon.min.js/,
+// which the documented exact-file source would block. Inline
 // styles stay allowed because the views may set style attributes; scripts may not.
 export const CSP = [
   "default-src 'self'",
-  "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com/beacon.min.js",
+  "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
   "frame-src https://challenges.cloudflare.com",
   "connect-src 'self'",
   "img-src 'self' data: blob:",
