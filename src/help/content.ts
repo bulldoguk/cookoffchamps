@@ -33,6 +33,9 @@ export interface HelpContent {
   /** The app's address in this language: "/?lang=es" opens it in Spanish. */
   appHref: string;
   linkLabel: string;
+  /** The footer link to the printables (SW-62), in this language. */
+  printablesLink: string;
+  printablesHref: string;
   partOf: string;
   sections: Section[];
 }
@@ -50,6 +53,8 @@ export const en: HelpContent = {
   backToApp: "Go to Cookoff Champs",
   appHref: "/",
   linkLabel: "Link to this answer",
+  printablesLink: "Free printables",
+  printablesHref: "/printables/",
   partOf: "Part of",
   sections: [
     {

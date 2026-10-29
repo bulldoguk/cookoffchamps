@@ -18,6 +18,8 @@ export const es: HelpContent = {
   backToApp: "Ir a Cookoff Champs",
   appHref: "/?lang=es",
   linkLabel: "Enlace a esta respuesta",
+  printablesLink: "Imprimibles gratis",
+  printablesHref: "/es/imprimibles/",
   partOf: "Parte de",
   sections: [
     {

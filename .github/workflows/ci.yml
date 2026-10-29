@@ -18,6 +18,8 @@ jobs:
       # Fails the build below 100% lines, branches, functions or statements.
       - run: npm run coverage
       # The deploy gate: only allowed file types in public/, and no secrets.
+      # The build prints the printables to PDF (SW-62), so it needs Chromium.
+      - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run check-publish
 

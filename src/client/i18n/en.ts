@@ -28,6 +28,8 @@ export const en = {
     generic: "Something went wrong. Please try again.",
     helpLink: "Help and questions",
     helpHref: "/help/",
+    printablesLink: "Free printables",
+    printablesHref: "/printables/",
     partOf: "Part of",
   },
 

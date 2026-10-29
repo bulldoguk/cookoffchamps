@@ -10,7 +10,8 @@ import path from "node:path";
 
 const pub = path.join(import.meta.dirname, "..", "public");
 
-export const ALLOWED = new Set([".html", ".css", ".js", ".map", ".svg", ".png", ".webmanifest", ".xml", ".txt"]);
+export const ALLOWED = new Set([".html", ".css", ".js", ".map", ".svg", ".png", ".webmanifest", ".xml", ".txt", ".pdf"]);
+// .pdf added for the printables (SW-62); they are printed at build time from our own pages.
 
 export const SECRET_PATTERNS = [
   /client_secret/i,
