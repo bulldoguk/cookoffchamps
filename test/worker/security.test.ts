@@ -36,8 +36,12 @@ describe("security headers", () => {
     }
   });
 
-  it("allows Turnstile and nothing else from off-site", () => {
-    expect(CSP).toContain("script-src 'self' https://challenges.cloudflare.com");
+  it("allows Turnstile and the analytics beacon and nothing else from off-site", () => {
+    expect(CSP).toContain(
+      "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com/beacon.min.js;",
+    );
+    // The beacon reports to our own /cdn-cgi/rum, so nothing is added to connect-src.
+    expect(CSP).toContain("connect-src 'self';");
     expect(CSP).toContain("frame-src https://challenges.cloudflare.com");
     expect(CSP).toContain("frame-ancestors 'none'");
     expect(CSP).toContain("object-src 'none'");
