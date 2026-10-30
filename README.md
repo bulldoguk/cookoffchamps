@@ -34,6 +34,10 @@ npm run coverage   # fails below 100% lines, branches, functions or statements
 
 API tests run inside the Workers runtime against local D1 and R2, through `@cloudflare/vitest-plugin`. Coverage is measured with istanbul and must stay at 100%. CI enforces this on every push and pull request. If any code is excluded from coverage, the comment that excludes it must say why.
 
+## Contributing
+
+Changes reach `main` only through a pull request, and CI must pass before it merges. CodeRabbit reviews pull requests into `main` once they're out of draft. It skips generated files (`package-lock.json`, the built `public/app.js` and its source map, and the printable PDFs); the settings are in `.coderabbit.yaml`.
+
 ## License
 
 MIT
