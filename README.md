@@ -36,7 +36,7 @@ API tests run inside the Workers runtime against local D1 and R2, through `@clou
 
 ## Contributing
 
-Changes reach `main` only through a pull request. CI must pass, and CodeRabbit reviews each PR.
+Changes reach `main` only through a pull request, and CI must pass before it merges. CodeRabbit reviews pull requests into `main` once they're out of draft. It skips generated files (`package-lock.json`, the built `public/app.js` and its source map, and the printable PDFs); the settings are in `.coderabbit.yaml`.
 
 ## License
 
