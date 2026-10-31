@@ -41,3 +41,55 @@ jobs:
         with:
           name: playwright-traces
           path: test-results/
+
+  # Deploy to Cloudflare when main changes and both test jobs pass (SW-73), so
+  # the Mac is no longer needed to publish. Same command as a manual deploy:
+  # `npm run deploy` builds, runs the check-publish gate, then `wrangler deploy`.
+  # Secrets (repo settings): CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+  # Remote D1 migrations stay manual: apply them before merging code that needs them.
+  deploy:
+    needs: [test, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    # One deploy at a time, in order; a newer push waits rather than racing.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # A deploy isn't done until it's checked from outside. Unknown paths get the
+      # single-page-app shell with a 200 (not_found_handling in wrangler.jsonc), so
+      # a source path passes only on a 404/403 or a body identical to the shell.
+      - name: Verify from the public internet
+        run: |
+          SITE=https://cookoffchamps.com
+          UA='Mozilla/5.0 (deploy check)'
+          sleep 10
+          shell=$(curl -fsS -A "$UA" "$SITE/" | sha256sum)
+          fail=0
+          for p in / /help/ /robots.txt /sitemap.xml /app.js /app.css; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -A "$UA" "$SITE$p")
+            if [ "$code" = 200 ]; then echo "ok   $p -> 200"; else echo "FAIL $p -> $code (want 200)"; fail=1; fi
+          done
+          for p in /package.json /wrangler.jsonc /src/worker/index.ts /.dev.vars /.git/config /README.md; do
+            code=$(curl -s -o /tmp/body -w '%{http_code}' -A "$UA" "$SITE$p")
+            if [ "$code" = 404 ] || [ "$code" = 403 ] || [ "$(sha256sum < /tmp/body)" = "$shell" ]; then
+              echo "ok   $p -> $code, not the file"
+            else
+              echo "FAIL $p -> $code with its own content"; fail=1
+            fi
+          done
+          exit $fail
