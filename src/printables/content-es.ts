@@ -16,6 +16,7 @@ export const es: PrintablesContent = {
   downloadPdf: "Descargar el PDF",
   orPrint: "O imprime esta página directamente desde tu navegador.",
   tipsTitle: "Consejos para el día",
+  guideLink: "Lee la guía",
   allPrintables: "Todos los imprimibles",
   skipThePaper: "Olvídate del papel: los invitados votan en su teléfono y la app cuenta.",
   runItFree: "Organiza tu propio concurso, gratis, en cookoffchamps.com",
@@ -26,6 +27,7 @@ export const es: PrintablesContent = {
       id: "pie",
       path: "/es/imprimibles/boleta-concurso-de-pays/",
       ref: "pie",
+      guidePath: "/es/guias/concurso-de-pays-de-accion-de-gracias/",
       title: "Boleta para concurso de pays",
       description:
         "Boleta gratis para imprimir para un concurso de pays de Acción de Gracias, seis por hoja, con hoja de conteo de votos. PDF tamaño carta.",
@@ -44,6 +46,7 @@ export const es: PrintablesContent = {
       id: "cookie",
       path: "/es/imprimibles/hoja-de-puntos-concurso-de-galletas/",
       ref: "cookie",
+      guidePath: "/es/guias/concurso-de-galletas-de-navidad/",
       title: "Hoja de puntos para concurso de galletas",
       description:
         "Hoja de puntos gratis para imprimir para un concurso de galletas navideñas: el jurado califica sabor, textura, presentación y espíritu navideño. Incluye boletas. PDF tamaño carta.",
@@ -70,6 +73,7 @@ export const es: PrintablesContent = {
       id: "chili",
       path: "/es/imprimibles/boleta-concurso-de-chili/",
       ref: "chili",
+      guidePath: "/es/guias/como-juzgar-un-concurso-de-chili/",
       title: "Boleta y hoja del jurado para concurso de chili",
       description:
         "Boleta gratis para imprimir para un concurso de chili, una hoja del jurado para aroma, color, consistencia, sabor y regusto, y una hoja de conteo. PDF tamaño carta.",

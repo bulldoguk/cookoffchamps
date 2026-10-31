@@ -122,7 +122,7 @@ ${guide.faq.map((f) => `        <h3>${escapeHtml(f.q)}</h3>\n        <p>${escape
       <section class="card guide-cta" id="run-it" aria-labelledby="run-it-title">
         <h2 id="run-it-title">${escapeHtml(content.runItTitle)}</h2>
         <p>${escapeHtml(content.runItText)}</p>
-        <p><a class="button" href="${escapeHtml(content.appHref)}">${escapeHtml(content.runItButton)}</a></p>
+        <p><a class="button" href="${escapeHtml(runItHref(content, guide))}">${escapeHtml(content.runItButton)}</a></p>
       </section>
     </main>
     <footer class="site-footer">
@@ -136,4 +136,9 @@ ${guide.faq.map((f) => `        <h3>${escapeHtml(f.q)}</h3>\n        <p>${escape
 /** Every guide's page, for the sitemap. */
 export function guidePaths(versions: GuidesContent[]): string[] {
   return versions.flatMap((v) => v.guides.map((g) => g.path));
+}
+
+/** The closing link: the app, tagged so the Worker counts it (?ref=guide-pie), in the guide's language. */
+export function runItHref(content: GuidesContent, guide: Guide): string {
+  return `/?ref=guide-${guide.id}${content.lang === "en" ? "" : `&lang=${content.lang}`}`;
 }

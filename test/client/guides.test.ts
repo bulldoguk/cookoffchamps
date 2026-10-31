@@ -74,12 +74,12 @@ describe("a guide's page", () => {
   });
 
   it("ends with the run-it-in-the-app call to action, pointing at the app in its language", () => {
-    for (const [c, href] of [[en, "/"], [es, "/?lang=es"]] as const) {
+    for (const [c, suffix] of [[en, ""], [es, "&lang=es"]] as const) {
       for (const g of c.guides) {
         const d = doc(c, g.id);
         const last = d.querySelector("main")!.lastElementChild!;
         expect(last.id).toBe("run-it");
-        expect(last.querySelector("a.button")!.getAttribute("href")).toBe(href);
+        expect(last.querySelector("a.button")!.getAttribute("href")).toBe(`/?ref=guide-${g.id}${suffix}`);
       }
     }
   });
@@ -129,5 +129,13 @@ describe("a guide's structured data", () => {
     const json = guideJsonLd(en, g);
     expect(json).not.toContain("<");
     expect(JSON.parse(json)["@graph"][1].mainEntity[0].acceptedAnswer.text).toBe("</script><b>");
+  });
+});
+
+describe("printables and guides point at each other", () => {
+  it("links every sheet to the guide with the same id, in its own language", () => {
+    for (const [c, p] of [[en, printEn], [es, printEs]] as const) {
+      for (const s of p.sheets) expect(s.guidePath).toBe(c.guides.find((g) => g.id === s.id)!.path);
+    }
   });
 });

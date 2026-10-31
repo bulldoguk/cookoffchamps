@@ -90,6 +90,7 @@ describe("the help page", () => {
     expect(doc.querySelector('link[rel="canonical"]')!.getAttribute("href")).toBe(`${ORIGIN}/es/ayuda/`);
     expect(doc.querySelector(".faq-link a")!.textContent).toBe("Enlace a esta respuesta");
     expect(doc.querySelector(".site-footer")!.textContent).toContain("Parte de");
+    expect([...doc.querySelectorAll(".site-footer a")].map((a) => a.getAttribute("href"))).toContain("/es/guias/como-juzgar-un-concurso-de-chili/");
     expect(doc.querySelector("main .button")!.getAttribute("href")).toBe("/?lang=es");
     const other = doc.querySelector<HTMLAnchorElement>("a.lang")!;
     expect([other.getAttribute("href"), other.lang, other.textContent]).toEqual(["/help/", "en", "English"]);

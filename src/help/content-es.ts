@@ -20,6 +20,11 @@ export const es: HelpContent = {
   linkLabel: "Enlace a esta respuesta",
   printablesLink: "Imprimibles gratis",
   printablesHref: "/es/imprimibles/",
+  guides: [
+    { text: "Guía del concurso de pays", href: "/es/guias/concurso-de-pays-de-accion-de-gracias/" },
+    { text: "Guía del concurso de galletas", href: "/es/guias/concurso-de-galletas-de-navidad/" },
+    { text: "Guía para juzgar chili", href: "/es/guias/como-juzgar-un-concurso-de-chili/" },
+  ],
   partOf: "Parte de",
   sections: [
     {
