@@ -19,6 +19,8 @@ export interface Sheet {
   path: string;
   /** The ?ref= the QR code carries, counted by the Worker. */
   ref: "pie" | "cookie" | "chili";
+  /** The guide (SW-63) that goes with this sheet, in this language. */
+  guidePath: string;
   title: string;
   description: string;
   intro: string;
@@ -39,6 +41,8 @@ export interface PrintablesContent {
   downloadPdf: string;
   orPrint: string;
   tipsTitle: string;
+  /** Link text from a sheet to its guide. */
+  guideLink: string;
   allPrintables: string;
   /** Printed at the foot of every page, beside the QR code. */
   skipThePaper: string;
@@ -60,6 +64,7 @@ export const en: PrintablesContent = {
   downloadPdf: "Download the PDF",
   orPrint: "Or print this page straight from your browser.",
   tipsTitle: "Tips for the day",
+  guideLink: "Read the guide",
   allPrintables: "All printables",
   skipThePaper: "Skip the paper: guests vote on their phones and the app counts.",
   runItFree: "Run your own cookoff, free at cookoffchamps.com",
@@ -70,6 +75,7 @@ export const en: PrintablesContent = {
       id: "pie",
       path: "/printables/pie-contest-ballot/",
       ref: "pie",
+      guidePath: "/guides/thanksgiving-pie-contest/",
       title: "Pie contest ballot",
       description:
         "A free printable pie contest ballot for Thanksgiving, six to a page, with a tally sheet for counting the votes. Letter-size PDF.",
@@ -88,6 +94,7 @@ export const en: PrintablesContent = {
       id: "cookie",
       path: "/printables/cookie-contest-score-sheet/",
       ref: "cookie",
+      guidePath: "/guides/christmas-cookie-contest/",
       title: "Cookie contest score sheet",
       description:
         "A free printable Christmas cookie contest score sheet: judges score taste, texture, looks and holiday spirit. Includes guest ballots. Letter-size PDF.",
@@ -114,6 +121,7 @@ export const en: PrintablesContent = {
       id: "chili",
       path: "/printables/chili-cookoff-ballot/",
       ref: "chili",
+      guidePath: "/guides/judge-a-chili-cookoff/",
       title: "Chili cookoff ballot and judging sheet",
       description:
         "A free printable chili cookoff ballot, a judging sheet for aroma, colour, consistency, taste and aftertaste, and a tally sheet. Letter-size PDF.",

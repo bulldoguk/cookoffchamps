@@ -1,3 +1,4 @@
+// Also writes the printables (SW-62) and the holiday guides (SW-63).
 // Writes the public help pages (SW-24) into public/ at build time:
 //   public/help/index.html (English), public/es/ayuda/index.html (Spanish, SW-27),
 //   public/help/filter.js, public/sitemap.xml, public/robots.txt
@@ -19,6 +20,8 @@ await build({
       `export { en } from "./src/help/content.ts"; export { es } from "./src/help/content-es.ts";`,
       `export { sheetPage, indexPage, printablePaths, pdfPath, qrTarget } from "./src/printables/render.ts";`,
       `export { en as printEn } from "./src/printables/content.ts"; export { es as printEs } from "./src/printables/content-es.ts";`,
+      `export { guidePage, guidePaths } from "./src/guides/render.ts";`,
+      `export { en as guidesEn } from "./src/guides/content.ts"; export { es as guidesEs } from "./src/guides/content-es.ts";`,
       `export { qrSvg } from "./src/client/qr.ts";`,
     ].join("\n"),
     resolveDir: root,
@@ -32,7 +35,7 @@ await build({
   outfile: tmp,
   logLevel: "warning",
 });
-const { helpPage, sitemap, robots, en, es, sheetPage, indexPage, printablePaths, printEn, printEs, qrSvg, qrTarget } = await import(`${pathToFileURL(tmp).href}?t=${Date.now()}`);
+const { helpPage, sitemap, robots, en, es, sheetPage, indexPage, printablePaths, printEn, printEs, guidePage, guidePaths, guidesEn, guidesEs, qrSvg, qrTarget } = await import(`${pathToFileURL(tmp).href}?t=${Date.now()}`);
 
 const versions = [en, es]; // English first: it's the x-default for search engines
 for (const content of versions) {
@@ -55,7 +58,13 @@ for (const content of printVersions) {
   }
 }
 
-fs.writeFileSync(path.join(pub, "sitemap.xml"), sitemap(printablePaths(printVersions)));
+// The holiday guides (SW-63): a page per search intent, in each language.
+const guideVersions = [guidesEn, guidesEs];
+for (const content of guideVersions) {
+  for (const guide of content.guides) write(guide.path, guidePage(content, guideVersions, printVersions, guide.id));
+}
+
+fs.writeFileSync(path.join(pub, "sitemap.xml"), sitemap([...printablePaths(printVersions), ...guidePaths(guideVersions)]));
 fs.writeFileSync(path.join(pub, "robots.txt"), robots());
 
 await build({
@@ -67,4 +76,4 @@ await build({
   outfile: path.join(pub, "help", "filter.js"),
   logLevel: "warning",
 });
-console.log("help and printables pages written");
+console.log("help, printables and guides pages written");

@@ -33,12 +33,13 @@ describe("worker routing", () => {
     await call("/?ref=results");
     await call("/?ref=reveal");
     await call("/?ref=chili&lang=es"); // a printable's QR code (SW-62)
+    await call("/?ref=guide-pie"); // a guide's closing link (SW-63)
     // Unknown refs, other paths and other methods aren't counted.
     await call("/?ref=spam");
     await call("/help/?ref=results");
     await call("/?ref=reveal", { method: "HEAD" });
     await call("/");
-    expect(await hits()).toEqual([{ ref: "chili", hits: 1 }, { ref: "results", hits: 2 }, { ref: "reveal", hits: 1 }]);
+    expect(await hits()).toEqual([{ ref: "chili", hits: 1 }, { ref: "guide-pie", hits: 1 }, { ref: "results", hits: 2 }, { ref: "reveal", hits: 1 }]);
   });
 
   it("still serves the page if the ref can't be counted", async () => {

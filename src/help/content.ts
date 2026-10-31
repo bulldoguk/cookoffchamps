@@ -36,6 +36,8 @@ export interface HelpContent {
   /** The footer link to the printables (SW-62), in this language. */
   printablesLink: string;
   printablesHref: string;
+  /** Footer links to the holiday guides (SW-63), in this language. */
+  guides: { text: string; href: string }[];
   partOf: string;
   sections: Section[];
 }
@@ -55,6 +57,11 @@ export const en: HelpContent = {
   linkLabel: "Link to this answer",
   printablesLink: "Free printables",
   printablesHref: "/printables/",
+  guides: [
+    { text: "Pie contest guide", href: "/guides/thanksgiving-pie-contest/" },
+    { text: "Cookie contest guide", href: "/guides/christmas-cookie-contest/" },
+    { text: "Chili judging guide", href: "/guides/judge-a-chili-cookoff/" },
+  ],
   partOf: "Part of",
   sections: [
     {

@@ -77,6 +77,8 @@ describe("a printable's page", () => {
     expect(doc.querySelectorAll("ul li")).toHaveLength(es.sheets[1]!.tips.length);
     const links = [...doc.querySelectorAll("main > p.no-print a")].map((a) => a.getAttribute("href"));
     expect(links).toEqual(["/es/imprimibles/", "/?lang=es"]);
+    expect(doc.querySelector("a.guide-link")!.getAttribute("href")).toBe("/es/guias/concurso-de-galletas-de-navidad/");
+    expect(doc.querySelector("a.guide-link")!.textContent).toBe("Lee la guía");
   });
 
   it("draws ballot slips, a score sheet and a tally sheet, each with the QR foot", () => {

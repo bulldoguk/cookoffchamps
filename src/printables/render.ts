@@ -131,6 +131,7 @@ export function sheetPage(content: PrintablesContent, versions: PrintablesConten
         <p class="muted">${escapeHtml(content.orPrint)}</p>
         <h2>${escapeHtml(content.tipsTitle)}</h2>
         <ul>${sheet.tips.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>
+        <p><a class="guide-link" href="${escapeHtml(sheet.guidePath)}">${escapeHtml(content.guideLink)}</a></p>
       </div>
       <div class="sheets">
 ${sheet.parts.map((p) => part(p, foot)).join("\n")}
